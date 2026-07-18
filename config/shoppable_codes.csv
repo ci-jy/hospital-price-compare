@@ -1,0 +1,73 @@
+code,category,description
+99203,E&M,"New patient office visit, 30-44 min"
+99204,E&M,"New patient office visit, 45-59 min"
+99205,E&M,"New patient office visit, 60-74 min"
+99213,E&M,"Established patient office visit, 20-29 min"
+99214,E&M,"Established patient office visit, 30-39 min"
+99215,E&M,"Established patient office visit, 40-54 min"
+99243,E&M,"Outpatient consultation, moderate"
+99244,E&M,"Outpatient consultation, moderate-high"
+99385,E&M,"Preventive visit, new patient 18-39"
+99386,E&M,"Preventive visit, new patient 40-64"
+99387,E&M,"Preventive visit, new patient 65+"
+99395,E&M,"Preventive visit, established patient 18-39"
+99396,E&M,"Preventive visit, established patient 40-64"
+99397,E&M,"Preventive visit, established patient 65+"
+90834,E&M,"Psychotherapy, 45 min"
+90837,E&M,"Psychotherapy, 60 min"
+90846,E&M,Family psychotherapy without patient
+90847,E&M,Family psychotherapy with patient
+90853,E&M,Group psychotherapy
+80048,Lab,Basic metabolic panel
+80053,Lab,Comprehensive metabolic panel
+80055,Lab,Obstetric blood test panel
+80061,Lab,Lipid panel
+80069,Lab,Kidney function panel
+80076,Lab,Liver function panel
+81000,Lab,"Urinalysis, manual with microscopy"
+81001,Lab,"Urinalysis, automated with microscopy"
+81002,Lab,"Urinalysis, manual without microscopy"
+81003,Lab,"Urinalysis, automated without microscopy"
+84153,Lab,"PSA, total"
+84443,Lab,Thyroid stimulating hormone (TSH)
+85025,Lab,Complete blood count with differential
+85027,Lab,"Complete blood count, automated"
+85610,Lab,Prothrombin time (PT)
+85730,Lab,Partial thromboplastin time (PTT)
+70450,Radiology,CT head or brain without contrast
+70553,Radiology,MRI brain with and without contrast
+72110,Radiology,"X-ray lower spine, 4+ views"
+72148,Radiology,MRI lumbar spine without contrast
+72193,Radiology,CT pelvis with contrast
+73721,Radiology,MRI leg joint without contrast
+74177,Radiology,CT abdomen and pelvis with contrast
+76700,Radiology,"Ultrasound of abdomen, complete"
+76805,Radiology,Obstetric ultrasound after first trimester
+76830,Radiology,Transvaginal ultrasound
+77065,Radiology,"Diagnostic mammography, one breast"
+77066,Radiology,"Diagnostic mammography, both breasts"
+77067,Radiology,"Screening mammography, both breasts"
+93000,Medicine,"Electrocardiogram, routine with interpretation"
+93452,Medicine,Left heart catheterization
+93620,Medicine,Electrophysiology evaluation
+95810,Medicine,"Sleep study, 6+ hours"
+97110,Medicine,"Physical therapy, therapeutic exercise"
+97161,Medicine,"Physical therapy evaluation, low complexity"
+19120,Surgery,Removal of breast lesion
+29826,Surgery,"Shoulder arthroscopy, decompression"
+29881,Surgery,"Knee arthroscopy, meniscectomy"
+42820,Surgery,"Tonsillectomy and adenoidectomy, under 12"
+43235,Surgery,"Upper GI endoscopy, diagnostic"
+43239,Surgery,Upper GI endoscopy with biopsy
+45378,Surgery,"Colonoscopy, diagnostic"
+45380,Surgery,Colonoscopy with biopsy
+45385,Surgery,Colonoscopy with lesion removal by snare
+45391,Surgery,Colonoscopy with endoscopic ultrasound
+47562,Surgery,Laparoscopic cholecystectomy
+49505,Surgery,"Inguinal hernia repair, age 5+"
+55700,Surgery,Prostate biopsy
+55866,Surgery,Laparoscopic radical prostatectomy
+64483,Surgery,Lumbar/sacral epidural injection with imaging
+64721,Surgery,Carpal tunnel release
+66821,Surgery,Laser surgery after cataract surgery
+66984,Surgery,Cataract removal with lens implant

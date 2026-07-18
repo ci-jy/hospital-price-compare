@@ -1,0 +1,40 @@
+# Boise City, ID metropolitan statistical area (Ada, Canyon, Boise, Gem and
+# Owyhee counties). Each hospital is located through the cms-hpt.txt file its
+# health system publishes at the root of its website (45 CFR 180.50(d)(6)).
+# `location` must match the `location-name` entry in that file.
+metro: Boise City, ID
+database: data/hpc.duckdb
+duckdb:
+  memory_limit: 1GB
+  threads: 2
+
+# Only these billing codes are kept in the database by default; pass
+# --all-codes to `hpc ingest` to keep every row.
+codes_file: config/shoppable_codes.csv
+
+hospitals:
+  - id: stlukes-boise
+    name: St. Luke's Boise Medical Center
+    city: Boise
+    domain: stlukesonline.org
+    location: St. Luke's Boise Standard Charges
+  - id: saint-alphonsus-boise
+    name: Saint Alphonsus Regional Medical Center
+    city: Boise
+    domain: saintalphonsus.org
+    location: Saint Alphonsus Regional Medical Center
+  - id: stlukes-nampa
+    name: St. Luke's Nampa Medical Center
+    city: Nampa
+    domain: stlukesonline.org
+    location: St. Luke's Nampa Standard Charges
+  - id: saint-alphonsus-nampa
+    name: Saint Alphonsus Medical Center Nampa
+    city: Nampa
+    domain: saintalphonsus.org
+    location: Saint Alphonsus Medical Center Nampa
+  - id: west-valley
+    name: West Valley Medical Center
+    city: Caldwell
+    domain: westvalleymedctr.com
+    location: WEST VALLEY MEDICAL CENTER
