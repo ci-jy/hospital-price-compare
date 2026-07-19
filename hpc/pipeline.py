@@ -53,12 +53,14 @@ def download(url: str, dest: Path) -> Path:
 
 def resolve_sources(metro: Metro, hospitals: list[Hospital]) -> dict[str, dict[str, str]]:
     sources_csv = metro.root / "data" / "sources.csv"
+    known = discover.read_sources(sources_csv)
     try:
         rows = discover.discover(metro, hospitals)
         discover.write_sources(rows, sources_csv)
+        # Use the live rows: sources.csv drops query strings (signed URLs).
+        known.update({r["hospital_id"]: r for r in rows})
     except Exception as exc:  # offline: fall back to the last recorded URLs
         log.warning("discovery failed (%s); using %s", exc, sources_csv)
-    known = discover.read_sources(sources_csv)
     missing = [h.id for h in hospitals if h.id not in known]
     if missing:
         raise RuntimeError(f"no source URL for {missing}; run `hpc discover` online")

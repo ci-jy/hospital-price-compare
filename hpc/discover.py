@@ -17,6 +17,7 @@ from __future__ import annotations
 import csv
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 
@@ -96,11 +97,22 @@ def discover(metro: Metro, hospitals: list[Hospital] | None = None) -> list[dict
     return rows
 
 
+def strip_query(url: str) -> str:
+    """Drop the query string: some MRF links are signed blob URLs whose
+    `sig=` parameter is an access token that should not be stored."""
+    parts = urlsplit(url)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+
+
 def write_sources(rows: list[dict[str, str]], path: Path) -> None:
-    """Merge rows into sources.csv, replacing older entries for the same hospital."""
+    """Merge rows into sources.csv, replacing older entries for the same hospital.
+
+    URLs are written without their query string; `hpc ingest` re-reads
+    cms-hpt.txt on every run to get the full, current link.
+    """
     existing = read_sources(path)
     for row in rows:
-        existing[row["hospital_id"]] = row
+        existing[row["hospital_id"]] = {**row, "mrf_url": strip_query(row["mrf_url"])}
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=SOURCES_FIELDS)
