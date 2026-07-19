@@ -69,5 +69,5 @@ def col_or_null(header: list[str], *names: str) -> str:
 
 def read_csv_sql(path: Path) -> str:
     return (f"read_csv({sql_str(str(path))}, skip=2, header=true, all_varchar=true, "
-            f"quote='\"', escape='\"', null_padding=true, max_line_size=10000000, "
+            f"quote='\"', escape='\"', null_padding=true, max_line_size=2097152, "
             f"ignore_errors=false)")

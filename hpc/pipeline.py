@@ -80,7 +80,7 @@ def ingest(metro: Metro, n_hospitals: int | None = None, all_codes: bool = False
     try:
         for h in hospitals:
             started = time.perf_counter()
-            url = files and "" or sources[h.id]["mrf_url"]
+            url = "" if files else sources[h.id]["mrf_url"]
             path = files[h.id] if files else download(url, raw_path(metro.root, h.id, url))
             fmt, meta, n = stage_file(con, path, h.id, codes)
             con.execute("DELETE FROM fact_rate WHERE hospital_id = ?", [h.id])
