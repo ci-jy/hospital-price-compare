@@ -1,0 +1,275 @@
+{
+ "hospital_name": "WEST VALLEY MEDICAL CENTER",
+ "last_updated_on": "2026-09-01",
+ "version": "3.0.0",
+ "location_name": [
+  "WEST VALLEY MEDICAL CENTER"
+ ],
+ "hospital_address": [
+  "1717 ARLINGTON AVENUE, CALDWELL, ID, 83605"
+ ],
+ "license_information": {
+  "license_number": "# 4",
+  "state": "ID"
+ },
+ "type_2_npi": [
+  "1891732905"
+ ],
+ "attestation": {
+  "attestation": "To the best of its knowledge and belief, this hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date in the file. This hospital has included all payer-specific negotiated charges in dollars that can be expressed as a dollar amount. For payer-specific negotiated charges that cannot be expressed as a dollar amount in the machine-readable file or not knowable in advance, the hospital attests that the payer-specific negotiated charge is based on a contractual algorithm, percentage or formula that precludes the provision of a dollar amount and has provided all necessary information available to the hospital for the public to be able to derive the dollar amount, including, but not limited to, the specific fee schedule or components referenced in such percentage, algorithm or formula.",
+  "confirm_attestation": true,
+  "attester_name": "Wendy McClain"
+ },
+ "general_contract_provisions": [
+  {
+   "provisions": "Lesser-of provision: Reimbursement for all services will be the lessor of Billed Gross Charges or the contracted Rate.",
+   "payer_name": "Coventry First Health",
+   "plan_name": "COMM"
+  },
+  {
+   "provisions": "Lesser-of provision: Reimbursement for all services will be the lessor of Billed Gross Charges or the contracted Rate.",
+   "payer_name": "Coventry First Health",
+   "plan_name": "WCOMP"
+  }
+ ],
+ "standard_charge_information": [
+  {
+   "description": "Colonoscopy, flexible; diagnostic, including collection of specimen(s) by brushing or washing, when performed (separate procedure) ",
+   "code_information": [
+    {
+     "code": "45378",
+     "type": "CPT"
+    },
+    {
+     "code": "481",
+     "type": "RC"
+    }
+   ],
+   "standard_charges": [
+    {
+     "setting": "outpatient",
+     "minimum": 6199.0,
+     "maximum": 6199.0,
+     "payers_information": [
+      {
+       "payer_name": "United",
+       "plan_name": "AllPayerAppendix",
+       "standard_charge_dollar": 6199.0,
+       "methodology": "case rate"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": "Colonoscopy, flexible; diagnostic, including collection of specimen(s) by brushing or washing, when performed (separate procedure) ",
+   "code_information": [
+    {
+     "code": "45378",
+     "type": "CPT"
+    }
+   ],
+   "standard_charges": [
+    {
+     "setting": "outpatient",
+     "minimum": 302.6,
+     "maximum": 2367.73,
+     "payers_information": [
+      {
+       "payer_name": "Blue Cross ",
+       "plan_name": "MLTSS",
+       "standard_charge_dollar": 302.6,
+       "methodology": "fee schedule"
+      },
+      {
+       "payer_name": "Blue Cross ",
+       "plan_name": "MMCP",
+       "standard_charge_dollar": 302.6,
+       "methodology": "fee schedule"
+      },
+      {
+       "payer_name": "Blue Cross",
+       "plan_name": "POS",
+       "standard_charge_dollar": 1117.83,
+       "methodology": "fee schedule"
+      },
+      {
+       "payer_name": "Blue Cross",
+       "plan_name": "PPO",
+       "standard_charge_dollar": 1117.83,
+       "methodology": "fee schedule"
+      },
+      {
+       "payer_name": "Blue Cross",
+       "plan_name": "TRAD",
+       "standard_charge_dollar": 1117.83,
+       "methodology": "fee schedule"
+      },
+      {
+       "payer_name": "Magellan",
+       "plan_name": "MGMCD",
+       "standard_charge_dollar": 302.6,
+       "methodology": "fee schedule"
+      },
+      {
+       "payer_name": "Molina",
+       "plan_name": "MCD",
+       "standard_charge_dollar": 302.6,
+       "methodology": "fee schedule"
+      },
+      {
+       "payer_name": "Regence",
+       "plan_name": "HIX",
+       "standard_charge_dollar": 2367.73,
+       "methodology": "fee schedule",
+       "additional_payer_notes": "The rate (in dollars) may be further adjusted for multiple procedure logic."
+      },
+      {
+       "payer_name": "Regence",
+       "plan_name": "PPO",
+       "standard_charge_dollar": 2367.73,
+       "methodology": "fee schedule",
+       "additional_payer_notes": "The rate (in dollars) may be further adjusted for multiple procedure logic."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": "Colonoscopy, flexible; diagnostic, including collection of specimen(s) by brushing or washing, when performed (separate procedure) ",
+   "code_information": [
+    {
+     "code": "361",
+     "type": "RC"
+    },
+    {
+     "code": "45378",
+     "type": "CPT"
+    }
+   ],
+   "standard_charges": [
+    {
+     "setting": "outpatient",
+     "minimum": 6199.0,
+     "maximum": 6199.0,
+     "payers_information": [
+      {
+       "payer_name": "United",
+       "plan_name": "AllPayerAppendix",
+       "standard_charge_dollar": 6199.0,
+       "methodology": "case rate"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": "Colonoscopy, flexible; diagnostic, including collection of specimen(s) by brushing or washing, when performed (separate procedure) ",
+   "code_information": [
+    {
+     "code": "360",
+     "type": "RC"
+    },
+    {
+     "code": "45378",
+     "type": "CPT"
+    }
+   ],
+   "standard_charges": [
+    {
+     "setting": "outpatient",
+     "minimum": 6199.0,
+     "maximum": 6199.0,
+     "payers_information": [
+      {
+       "payer_name": "United",
+       "plan_name": "AllPayerAppendix",
+       "standard_charge_dollar": 6199.0,
+       "methodology": "case rate"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": "Colonoscopy, flexible; diagnostic, including collection of specimen(s) by brushing or washing, when performed (separate procedure) ",
+   "code_information": [
+    {
+     "code": "45378",
+     "type": "CPT"
+    },
+    {
+     "code": "490",
+     "type": "RC"
+    }
+   ],
+   "standard_charges": [
+    {
+     "setting": "outpatient",
+     "minimum": 6199.0,
+     "maximum": 6199.0,
+     "payers_information": [
+      {
+       "payer_name": "United",
+       "plan_name": "AllPayerAppendix",
+       "standard_charge_dollar": 6199.0,
+       "methodology": "case rate"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": "CT PELVIS W/CONTRAST",
+   "code_information": [
+    {
+     "code": "45141",
+     "type": "CDM"
+    },
+    {
+     "code": "72193",
+     "type": "CPT"
+    }
+   ],
+   "standard_charges": [
+    {
+     "setting": "outpatient",
+     "minimum": 1208.47,
+     "maximum": 3598.9,
+     "gross_charge": 3788.32,
+     "discounted_cash": 3788.32,
+     "payers_information": [
+      {
+       "payer_name": "Aetna",
+       "plan_name": "COMM",
+       "standard_charge_dollar": 2996.56,
+       "methodology": "percent of total billed charges",
+       "additional_payer_notes": " Reimbursement will be 79.1% of billable gross charges."
+      },
+      {
+       "payer_name": "Blue Cross",
+       "plan_name": "ConnectedCare",
+       "standard_charge_dollar": 3598.9,
+       "methodology": "percent of total billed charges",
+       "additional_payer_notes": " Reimbursement will be 95% of billable gross charges."
+      },
+      {
+       "payer_name": "Blue Cross",
+       "plan_name": "QEP",
+       "standard_charge_dollar": 3598.9,
+       "methodology": "percent of total billed charges",
+       "additional_payer_notes": " Reimbursement will be 95% of billable gross charges."
+      },
+      {
+       "payer_name": "Blue Cross",
+       "plan_name": "QHP",
+       "standard_charge_dollar": 3598.9,
+       "methodology": "percent of total billed charges",
+       "additional_payer_notes": " Reimbursement will be 95% of billable gross charges."
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

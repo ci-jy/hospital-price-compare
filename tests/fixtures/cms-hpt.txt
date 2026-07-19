@@ -1,0 +1,11 @@
+location-name: Saint Alphonsus Regional Medical Center                 
+source-page-url: https://www.saintalphonsus.org/for-patients/before-your-visit/price-estimator
+mrf-url: https://hpt.trinity-health.org/820200895_saint-alphonsus-regional-medical-center-boise_standardcharges.zip
+contact-name: David McFadyen President 
+contact-email: david.mcfadyen@saintalphonsus.org
+
+location-name: Saint Alphonsus Medical Center Nampa                     
+source-page-url: https://www.saintalphonsus.org/for-patients/before-your-visit/price-estimator  
+mrf-url: https://hpt.trinity-health.org/820200896_saint-alphonsus-medical-center-nampa_standardcharges.zip
+contact-name: Clint Child President
+contact-email: clint.child@saintalphonsus.org
