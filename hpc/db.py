@@ -18,6 +18,7 @@ def connect(path: str | Path, memory_limit: str = "1GB", threads: int = 2,
     con.execute(f"SET memory_limit = '{memory_limit}'")
     con.execute(f"SET threads = {int(threads)}")
     con.execute("SET preserve_insertion_order = false")
+    con.execute("SET enable_progress_bar = false")
     spill = Path(os.environ.get("HPC_SPILL_DIR", path.parent / ".duckdb_tmp"))
     con.execute(f"SET temp_directory = '{spill}'")
     return con

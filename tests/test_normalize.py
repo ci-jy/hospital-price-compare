@@ -26,7 +26,7 @@ def con():
 def rate(con, **values):
     row = {k: None for k in STG}
     row.update(hospital_id="h", description="x", code="A9270", code_type="HCPCS",
-               setting="both", payer_name="MOLINA MEDICAID", plan_name="MOLINA IM PLUS MEDICAID")
+               setting="both", billing_class="facility", payer_name="MOLINA MEDICAID", plan_name="MOLINA IM PLUS MEDICAID")
     row.update(values)
     con.execute(f"INSERT INTO stg_rate VALUES ({','.join('?' * len(STG))})",
                 [row[k] for k in STG])
@@ -105,3 +105,10 @@ def test_unknown_method_is_never_compared(con):
     got = rate(con, gross_charge="100", methodology="other", negotiated_algorithm="see contract")
     assert got[1] is None
     assert got[3] == "method_unknown"
+
+
+def test_missing_billing_class_is_assumed_facility(con):
+    got = rate(con, billing_class=None, gross_charge="100", negotiated_dollar="50",
+               methodology="fee schedule")
+    assert got[3] == "billing_class_assumed"
+    assert con.execute("SELECT billing_class FROM fact_rate").fetchone()[0] == "facility"

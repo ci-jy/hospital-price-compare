@@ -85,7 +85,8 @@ flagged AS (
             CASE WHEN pricing_method = 'percent_of_charges' AND amount > 100
                  THEN 'pct_over_100' END,
             CASE WHEN mp.match_method = 'unresolved' THEN 'payer_unresolved' END,
-            CASE WHEN method_inferred THEN 'method_inferred' END
+            CASE WHEN method_inferred THEN 'method_inferred' END,
+            CASE WHEN f.billing_class IS NULL THEN 'billing_class_assumed' END
         ], x -> x IS NOT NULL) AS flags
     FROM final f
     JOIN map_payer_plan mp
@@ -96,7 +97,9 @@ flagged AS (
 SELECT
     fl.hospital_id, sv.service_id, fl.plan_id,
     coalesce(fl.payer_name, ''), coalesce(fl.plan_name, ''),
-    fl.setting, fl.billing_class, fl.modifiers, fl.gross,
+    -- Files without a billing_class column publish the hospital's own
+    -- (facility) charges.
+    fl.setting, coalesce(fl.billing_class, 'facility'), fl.modifiers, fl.gross,
     fl.dollar, fl.pct, nullif(fl.m, ''), fl.pricing_method,
     CASE WHEN fl.amount > 0 AND fl.pricing_method <> 'other' THEN fl.amount END,
     CASE WHEN fl.pricing_method = 'percent_of_charges' THEN 'pct_of_charges' ELSE 'usd' END,

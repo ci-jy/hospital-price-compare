@@ -114,7 +114,8 @@ def cmd_compare(args) -> int:
         where.append("setting = ?")
         params.append(args.setting)
     rows = con.execute(f"""
-        SELECT setting, pricing_method, compare_unit, hospital_name, payer_name, plan_type,
+        SELECT setting, billing_class, modifiers, pricing_method, compare_unit,
+               hospital_name, payer_name, plan_type,
                compare_amount, quality_flag,
                count(*) AS raw_rows,
                count(DISTINCT payer_raw || '|' || plan_raw) AS raw_plans,
@@ -124,7 +125,8 @@ def cmd_compare(args) -> int:
         FROM v_rate_compare
         WHERE {' AND '.join(where)}
         GROUP BY ALL
-        ORDER BY setting, pricing_method, compare_amount, hospital_name, payer_name
+        ORDER BY setting, billing_class, modifiers, pricing_method, compare_amount,
+                 hospital_name, payer_name
     """, params).df()
     con.close()
     if rows.empty:
@@ -135,11 +137,14 @@ def cmd_compare(args) -> int:
         return 0
 
     print(f"{args.code}  {rows['service'].iloc[0]}")
-    print("Rates are only compared within one setting and one pricing method.\n")
-    for (setting, method), grp in rows.groupby(["setting", "pricing_method"], sort=False):
+    print("Rates are only compared within one setting, billing class, modifier set "
+          "and pricing method.\n")
+    keys = ["setting", "billing_class", "modifiers", "pricing_method"]
+    for (setting, bclass, mods, method), grp in rows.groupby(keys, sort=False):
         unit = grp["compare_unit"].iloc[0]
         med = grp["group_median"].iloc[0]
-        print(f"== {setting} | {METHOD_LABELS.get(method, method)} | "
+        mod = f" | modifier {mods}" if mods else ""
+        print(f"== {setting} | {bclass}{mod} | {METHOD_LABELS.get(method, method)} | "
               f"{grp['group_hospitals'].iloc[0]} hospitals, median {_fmt_amount(med, unit)}")
         print(f"   {'hospital':<40} {'payer':<36} {'plan type':<18} "
               f"{'rate':>22} {'vs median':>9}  {'plans':>5}  flag")

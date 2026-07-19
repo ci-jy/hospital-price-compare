@@ -81,14 +81,17 @@ CREATE TABLE IF NOT EXISTS fact_rate (
     quality_notes VARCHAR               -- every issue found, comma separated
 );
 
--- A comparison group is one code in one setting priced one way. Rates are
--- only ever ranked against other rates in the same group.
+-- A comparison group is one code, in one setting, billed by the same side
+-- (facility or professional), with the same modifiers, priced one way. Rates
+-- are only ever ranked against other rates in the same group.
 CREATE OR REPLACE VIEW v_rate_compare AS
 SELECT
     s.code,
     s.code_type,
     s.description AS service,
     coalesce(f.setting, 'unknown') AS setting,
+    coalesce(f.billing_class, 'unspecified') AS billing_class,
+    coalesce(f.modifiers, '') AS modifiers,
     f.pricing_method,
     f.compare_unit,
     h.hospital_id,
@@ -103,7 +106,8 @@ SELECT
     f.gross_charge,
     f.quality_flag,
     f.quality_notes,
-    concat_ws('|', s.code, coalesce(f.setting, 'unknown'), f.pricing_method) AS comparison_group,
+    concat_ws('|', s.code, coalesce(f.setting, 'unknown'), coalesce(f.billing_class, 'unspecified'),
+              coalesce(f.modifiers, ''), f.pricing_method) AS comparison_group,
     median(f.compare_amount) OVER w AS group_median,
     count(*) OVER w AS group_rates,
     count(DISTINCT h.hospital_id) OVER w AS group_hospitals
@@ -113,11 +117,13 @@ JOIN dim_hospital h USING (hospital_id)
 JOIN dim_plan pl USING (plan_id)
 JOIN dim_payer p ON p.payer_id = pl.payer_id
 WHERE f.compare_amount IS NOT NULL
-WINDOW w AS (PARTITION BY s.code, coalesce(f.setting, 'unknown'), f.pricing_method);
+WINDOW w AS (PARTITION BY s.code, coalesce(f.setting, 'unknown'),
+             coalesce(f.billing_class, 'unspecified'), coalesce(f.modifiers, ''),
+             f.pricing_method);
 
 -- Per-code summary: one row per comparison group.
 CREATE OR REPLACE VIEW v_compare_summary AS
-SELECT code, service, setting, pricing_method, compare_unit,
+SELECT code, service, setting, billing_class, modifiers, pricing_method, compare_unit,
        count(*) AS rates,
        count(DISTINCT hospital_id) AS hospitals,
        count(DISTINCT payer_name) AS payers,
