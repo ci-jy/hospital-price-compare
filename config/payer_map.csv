@@ -1,5 +1,6 @@
 payer_raw,plan_raw,payer_name,plan_type,note
-COMMERCIAL [1028],HB NAMPA BP AETNA,Aetna,commercial,"Generic COMMERCIAL bucket; the plan column names the network"
-COMMERCIAL [1028],HB NAMPA CIGNA,Cigna,commercial,
-COMMERCIAL [1028],HB NAMPA UNITED HEALTHCARE,UnitedHealthcare,commercial,
-WEBTPA [1071],*,WebTPA,commercial,"Third-party administrator; rents the network named in the plan column"
+COMMERCIAL [1028],HB TV AMPS,Advanced Medical Pricing Solutions,commercial,St. Luke's files the AMPS repricing network under a generic COMMERCIAL payer
+COMMERCIAL [1028],HB NAMPA AMPS,Advanced Medical Pricing Solutions,commercial,same contract at the Nampa campus
+COMMERCIAL [1028],HB TV CHRISTIAN HEALTH AID,Christian Healthcare Ministries,commercial,health-sharing ministry; not insurance but has a negotiated rate
+COMMERCIAL [1028],HB NAMPA CHRISTIAN HEALTH AID,Christian Healthcare Ministries,commercial,same contract at the Nampa campus
+EverNorth BH,COMM,Cigna,commercial,Evernorth is Cigna's behavioural-health arm

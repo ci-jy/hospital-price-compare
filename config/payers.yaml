@@ -1,14 +1,18 @@
 # Canonical payers for the Boise metro and the spellings hospitals use for
 # them. Aliases are matched on whole words after the raw name is cleaned
 # (upper-cased, bracketed ids like "[1021]" and "HB NAMPA" prefixes removed).
+# `program: true` marks government programs: their aliases ("MEDICARE") are
+# only used when no carrier name matches, so "AETNA MEDICARE" stays Aetna.
 # `medicaid_mco: true` marks plans that only run Medicaid business here, which
 # decides what an ambiguous "MA" plan code means.
 payers:
   Aetna: [AETNA]
-  Blue Cross of Idaho: [BLUE CROSS IDAHO, BLUE CROSS OF IDAHO, BCI, BLUE CROSS, BLUECROSS, BCBS, ANTHEM, PREMERA, BLUE SHIELD]
+  # Out-of-state Blue plans (BlueCard) are priced under the local Blue
+  # contract, so "BLUE CROSS - AK (PREMERA)" resolves here too.
+  Blue Cross of Idaho: [BLUE CROSS IDAHO, BLUE CROSS OF IDAHO, BCI, BLUE CROSS, BLUECROSS, BCBS, ANTHEM, PREMERA, BLUE SHIELD, TRUE BLUE]
   Blue Cross Federal Employee Program: [BLUE CROSS FEDERAL, FEP]
   Regence BlueShield of Idaho: [REGENCE]
-  Cigna: [CIGNA]
+  Cigna: [CIGNA, EVERNORTH]
   UnitedHealthcare: [UNITED HEALTHCARE, UNITED HEALTH CARE, UNITEDHEALTHCARE, UHC, UNITED, UMR, UNITED MEDICAL RESOURCES, OPTUM]
   Humana: [HUMANA]
   Molina Healthcare:
@@ -18,9 +22,12 @@ payers:
     aliases: [MAGELLAN]
     medicaid_mco: true
   Idaho Medicaid:
-    aliases: [IDAHO MEDICAID, MEDICAID, IDHW, COUNTY]
+    aliases: [IDAHO MEDICAID, MEDICAID, IDHW, IDAHO DEPT HEALTH AND WELFARE, IDAHO DEPT HEALTH AND WELLFARE, IDAHO DEPARTMENT OF HEALTH WELFARE]
     medicaid_mco: true
-  Medicare: [MEDICARE, CMS, NORIDIAN]
+    program: true
+  Medicare:
+    aliases: [MEDICARE, CMS, NORIDIAN, MCR]
+    program: true
   PacificSource: [PACIFICSOURCE, PACIFIC SOURCE]
   SelectHealth: [SELECT HEALTH, SELECTHEALTH, SELECTMED]
   Mountain Health Co-op: [MOUNTAIN HEALTH CO-OP, MOUNTAIN HEALTH COOP, MHC]
@@ -38,3 +45,11 @@ payers:
   Clover Health: [CLOVER]
   Devoted Health: [DEVOTED]
   Idaho Workers' Compensation: [WORKERS COMP, WORK COMP, WCOMP, STATE INSURANCE FUND, IDAHO STATE INSURANCE]
+  St. Luke's Health Partners: [ST LUKES HEALTH PARTNERS]
+  WebTPA: [WEBTPA]
+  Health Net: [HEALTH NET, HEALTHNET]
+  Allegiance Benefit Plan Management: [ALLEGIANCE]
+  Health Plans Inc: [HEALTH PLANS INC]
+  Centurion of Idaho: [CENTURION]
+  Corizon Health: [CORIZON]
+  Columbia Health Network: [COLUMBIA HEALTH NETWORK]

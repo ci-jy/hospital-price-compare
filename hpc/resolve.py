@@ -47,9 +47,10 @@ def _has(text: str, phrase: str) -> bool:
 
 _MA_PATTERNS = ("MEDICARE ADVANTAGE", "MEDICARE ADV", "MCR ADV", "MED ADV", "MEDADV",
                 "MAPD", "MA PPO", "MA HMO", "DSNP", "D-SNP", "SNP", "MEDICARE REPLACEMENT",
-                "SENIOR", "DUAL", "MMP")
+                "SENIOR", "DUAL", "MMP", "MCRHMO", "MCR HMO",
+                "MCRPPO", "MCR PPO", "TRUE BLUE")
 _MEDICAID_PATTERNS = ("MEDICAID", "MCD", "MMCP", "MLTSS", "CHIP", "MGMCD", "IDHW",
-                      "MEDICAID COUNTY", "BLUE CROSS IDAHO MEDICAID", "TRUE BLUE")
+                      "MEDICAID COUNTY")
 _EXCHANGE_PATTERNS = ("QHP", "HIX", "EXCHANGE", "MARKETPLACE", "ACA", "INDIVIDUAL")
 _WC_PATTERNS = ("WORKERS COMP", "WORK COMP", "WCOMP", "WORKERS COMPENSATION", "WC")
 _MILITARY_PATTERNS = ("TRICARE", "CHAMPVA", "VACCN", "VETERANS", "TRIWEST", "VA")
@@ -94,19 +95,23 @@ class Resolution:
 class PayerResolver:
     def __init__(self, payers: dict, reviewed: list[dict[str, str]] | None = None):
         self.medicaid_mco: set[str] = set()
-        self.aliases: list[tuple[str, str]] = []   # (alias, canonical)
+        self.aliases: list[tuple[str, str]] = []          # carriers: (alias, canonical)
+        self.program_aliases: list[tuple[str, str]] = []  # Medicare, Medicaid
         for name, spec in payers.items():
             if isinstance(spec, dict):
                 aliases = spec.get("aliases", [])
                 if spec.get("medicaid_mco"):
                     self.medicaid_mco.add(name)
+                target = self.program_aliases if spec.get("program") else self.aliases
             else:
-                aliases = spec
+                aliases, target = spec, self.aliases
             for a in [name, *aliases]:
-                self.aliases.append((clean(a), name))
+                target.append((clean(a), name))
         # Longest alias wins: "BLUE CROSS FEDERAL" before "BLUE CROSS".
         self.aliases.sort(key=lambda a: -len(a[0]))
-        self._alias_choices = [a for a, _ in self.aliases]
+        self.program_aliases.sort(key=lambda a: -len(a[0]))
+        self._all = self.aliases + self.program_aliases
+        self._alias_choices = [a for a, _ in self._all]
         self.reviewed = {(r["payer_raw"].strip(), r["plan_raw"].strip()): r
                          for r in reviewed or []}
 
@@ -119,8 +124,8 @@ class PayerResolver:
                 reviewed = list(csv.DictReader(f))
         return cls(payers, reviewed)
 
-    def _alias_match(self, text: str) -> str | None:
-        for alias, canonical in self.aliases:
+    def _alias_match(self, text: str, aliases: list[tuple[str, str]]) -> str | None:
+        for alias, canonical in aliases:
             if alias and _has(text, alias):
                 return canonical
         return None
@@ -132,14 +137,24 @@ class PayerResolver:
             return Resolution(hit["payer_name"], hit["plan_type"], "reviewed", 100.0)
 
         payer_c, plan_c = clean(payer_raw), clean(plan_raw)
-        canonical = self._alias_match(payer_c) or self._alias_match(plan_c)
+        canonical = (self._alias_match(payer_c, self.aliases)
+                     or self._alias_match(plan_c, self.aliases)
+                     or self._alias_match(payer_c, self.program_aliases)
+                     or self._alias_match(plan_c, self.program_aliases))
         method, score = "alias", 100.0
         if canonical is None and payer_c:
             best = process.extractOne(payer_c, self._alias_choices,
                                       scorer=fuzz.token_sort_ratio, score_cutoff=FUZZY_CUTOFF)
             if best:
-                canonical, method, score = self.aliases[best[2]][1], "fuzzy", float(best[1])
+                canonical, method, score = self._all[best[2]][1], "fuzzy", float(best[1])
         if canonical is None:
             canonical, method, score = (payer_c.title() or "Unknown payer"), "unresolved", None
         plan_type = classify_plan_type(payer_raw, plan_raw, canonical in self.medicaid_mco)
+        programs = {name for _, name in self.program_aliases}
+        if plan_type == "medicare" and canonical not in programs and method != "unresolved":
+            # A private carrier's Medicare business is Medicare Advantage.
+            plan_type = "medicare_advantage"
+        if canonical == "Medicare" and plan_type == "medicare_advantage":
+            # A private Medicare Advantage plan whose carrier we don't know.
+            canonical, method, score = "Medicare Advantage (unlisted carrier)", "unresolved", None
         return Resolution(canonical, plan_type, method, score)

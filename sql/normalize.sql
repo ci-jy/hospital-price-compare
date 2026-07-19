@@ -36,32 +36,47 @@ classified AS (
     FROM parsed
 ),
 repaired AS (
-    -- A percent-of-charges rate whose only number is in the dollar column
-    -- and is at most 1 (e.g. "$0.76") is a fraction of charges, not 76 cents.
+    -- Percent-of-charges rates where the percentage column is empty. The
+    -- number is recovered, in order, from text like "79.1% of billable gross
+    -- charges" in the notes, from dollar / gross charge, or - when there is
+    -- no usable gross charge and the dollar value is at most 1 (a "$0.76"
+    -- that can only be a fraction) - from the dollar column itself.
     SELECT *,
-        (pricing_method = 'percent_of_charges' AND pct_raw IS NULL
-         AND d_raw > 0 AND d_raw <= 1 AND coalesce(gross, 2) > 1) AS pct_in_dollar,
-        (pct_raw > 0 AND pct_raw <= 1) AS pct_fraction
+        TRY_CAST(nullif(regexp_extract(coalesce(notes, '') || ' ' || alg,
+                                       '(\d+(?:\.\d+)?)\s*%', 1), '') AS DOUBLE) AS pct_text,
+        CASE WHEN gross > 0 THEN d_raw / gross * 100 END AS pct_ratio,
+        pricing_method = 'percent_of_charges' AND pct_raw IS NULL AS pct_missing
     FROM classified
 ),
 amounts AS (
     SELECT *,
+        pct_missing AND pct_text IS NULL AND d_raw > 0 AND d_raw <= 1
+            AND (pct_ratio IS NULL OR pct_ratio < 1) AS pct_in_dollar,
+        (pct_raw > 0 AND pct_raw <= 1) AS pct_fraction,
+        pct_missing AND (pct_text IS NOT NULL OR pct_ratio >= 1) AS pct_derived
+    FROM repaired
+),
+values AS (
+    SELECT *,
         CASE WHEN pct_in_dollar THEN NULL ELSE d_raw END AS dollar,
         CASE WHEN pct_in_dollar THEN d_raw * 100
              WHEN pct_fraction THEN pct_raw * 100
+             WHEN pct_missing AND pct_text IS NOT NULL THEN pct_text
+             WHEN pct_missing AND pct_ratio >= 1 THEN round(pct_ratio, 2)
              ELSE pct_raw END AS pct
-    FROM repaired
+    FROM amounts
 ),
 final AS (
     SELECT *,
         CASE WHEN pricing_method = 'percent_of_charges' THEN pct ELSE dollar END AS amount
-    FROM amounts
+    FROM values
 ),
 flagged AS (
     SELECT f.*, mp.plan_id, mp.match_method,
         list_filter([
             CASE WHEN pct_in_dollar THEN 'pct_in_dollar_field' END,
             CASE WHEN pct_fraction THEN 'pct_rescaled' END,
+            CASE WHEN pct_derived THEN 'pct_derived' END,
             CASE WHEN pricing_method = 'other' THEN 'method_unknown' END,
             CASE WHEN amount IS NULL THEN 'no_amount' END,
             CASE WHEN amount = 0 THEN 'zero_amount' END,
