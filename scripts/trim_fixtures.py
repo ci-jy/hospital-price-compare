@@ -20,12 +20,20 @@ RAW = Path("data/raw")
 OUT = Path("tests/fixtures")
 
 
+PLACEHOLDER_NAME = "Example Attester"
+
+
 def trim_csv(src: Path, dest: Path, keep, limit: int) -> None:
     with open(src, newline="", encoding="utf-8-sig") as f, \
             open(dest, "w", newline="", encoding="utf-8") as out:
         r, w = csv.reader(f), csv.writer(out)
-        for _ in range(3):
-            w.writerow(next(r))
+        keys, values = next(r), next(r)
+        # The metadata rows name the person who signed the attestation.
+        values = [PLACEHOLDER_NAME if k.strip().lower() == "attester_name" and v else v
+                  for k, v in zip(keys, values)] + values[len(keys):]
+        w.writerow(keys)
+        w.writerow(values)
+        w.writerow(next(r))
         n = 0
         for row in r:
             if keep(row):
@@ -89,6 +97,8 @@ def main() -> None:
                     seen.add("72193")
             if len(items) >= 5 and "72193" in seen:
                 break
+    if isinstance(header.get("attestation"), dict) and header["attestation"].get("attester_name"):
+        header["attestation"]["attester_name"] = PLACEHOLDER_NAME
     header["general_contract_provisions"] = header.get("general_contract_provisions", [])[:2]
     header["standard_charge_information"] = items
     (OUT / "west_valley.json").write_text(json.dumps(header, indent=1))

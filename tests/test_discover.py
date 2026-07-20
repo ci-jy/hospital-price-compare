@@ -40,3 +40,15 @@ def test_sources_csv_drops_signed_query_string(tmp_path):
 def test_fixture_has_no_real_contacts():
     text = (FIXTURES / "cms-hpt.txt").read_text()
     assert "@saintalphonsus.org" not in text
+
+
+def test_fixture_attesters_are_placeholders():
+    import csv
+    import json
+    for name in ("wide_stlukes_nampa.csv", "tall_saint_alphonsus_nampa.csv"):
+        with open(FIXTURES / name, newline="", encoding="utf-8") as f:
+            r = csv.reader(f)
+            meta = dict(zip(next(r), next(r)))
+        assert meta["attester_name"] == "Example Attester"
+    doc = json.loads((FIXTURES / "west_valley.json").read_text())
+    assert doc["attestation"]["attester_name"] == "Example Attester"
