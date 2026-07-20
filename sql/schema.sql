@@ -129,8 +129,6 @@ SELECT code, service, setting, billing_class, modifiers, pricing_method, compare
        count(DISTINCT payer_name) AS payers,
        min(compare_amount) AS min_amount,
        median(compare_amount) AS median_amount,
-       max(compare_amount) AS max_amount,
-       count(DISTINCT pricing_method) AS methods_in_group,
-       count(DISTINCT compare_unit) AS units_in_group
+       max(compare_amount) AS max_amount
 FROM v_rate_compare
 GROUP BY ALL;

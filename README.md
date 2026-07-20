@@ -115,7 +115,7 @@ erDiagram
 - `map_payer_plan`: each hospital's raw payer/plan strings → `dim_plan`, with match method and score
 - `fact_rate`: one negotiated rate: setting, billing class, modifiers, gross charge, dollar, percentage, `pricing_method`, `compare_amount`, `compare_unit`, `quality_flag`
 - `v_rate_compare`: rates with the median of their comparison group. A group is code × setting × billing class × modifiers × pricing method, so a professional fee, a discontinued-procedure (`-74`) rate and a percent-of-charges rate never sit in the same ranking
-- `v_compare_summary`: one row per comparison group, which `hpc check` uses to assert no group mixes methods
+- `v_compare_summary`: one row per comparison group with its rate count and min / median / max
 
 ### Quality flags
 
@@ -193,7 +193,7 @@ python3 -m hpc check --min-hospitals 5
 python3 -m hpc compare --code 45378
 ```
 
-The first `ingest` downloads about 1.6 GB into `data/raw/` (gitignored), and unzipping the two Saint Alphonsus files takes about 10 GB of disk. Later runs reuse the cached files unless the URL in `cms-hpt.txt` changes. With files cached, the default run (72 shoppable codes) takes about 30 seconds and stores 180,454 rates.
+The first `ingest` downloads about 1.6 GB into `data/raw/` (gitignored), and unzipping the two Saint Alphonsus files takes about 10 GB of disk. Later runs reuse the cached files unless the URL in `cms-hpt.txt` changes. With files cached, the default run (72 shoppable codes) takes about 30 seconds, stores 180,454 rates and peaks at 426 MB of memory (the command prints this).
 
 ## Testing
 
@@ -201,17 +201,19 @@ The first `ingest` downloads about 1.6 GB into `data/raw/` (gitignored), and unz
 python3 -m pytest -q
 ```
 
-57 tests run in about a second against `tests/fixtures/`: trimmed excerpts of the real St. Luke's Nampa wide CSV, Saint Alphonsus Nampa tall CSV, West Valley JSON and the Saint Alphonsus `cms-hpt.txt` (cut by `scripts/trim_fixtures.py`). They cover format detection including zips, the wide-file unpivot (row counts and values checked against an independent `csv` parse), streaming JSON, payer resolution including the `MA` ambiguity, every pricing-method rule, the `$0.76` case and its variants, and ingest → check → compare end to end.
+60 tests run in about a second against `tests/fixtures/`: trimmed excerpts of the real St. Luke's Nampa wide CSV, Saint Alphonsus Nampa tall CSV, West Valley JSON and the Saint Alphonsus `cms-hpt.txt` (cut by `scripts/trim_fixtures.py`). They cover format detection including zips, the wide-file unpivot (row counts and values checked against an independent `csv` parse), streaming JSON, payer resolution including the `MA` ambiguity, every pricing-method rule, the `$0.76` case and its variants, and ingest → check → compare end to end. Two of them corrupt a copy of the database (a percent rate relabelled as dollars, and a ranking view that ignores the pricing method) and confirm `hpc check` fails. The fixtures' attester names and contact details are replaced with placeholders.
 
-`hpc check` is the data-level test for a real load. It asserts that every staged row became a rate, that enough hospitals and encodings are covered, that no comparison group mixes pricing methods or units, that every rate has a quality flag, and that every fact joins to its dimensions.
+`hpc check` is the data-level test for a real load. It asserts that every staged row became a rate, that enough hospitals and encodings are covered, that each ranked group holds one pricing method and one unit and that its median is computed over exactly that group's rates, that every rate has a quality flag, and that every fact joins to its dimensions.
 
 ## Results
 
 From the default load (72 shoppable codes, five hospitals):
 
 - 180,454 negotiated rates, of which 180,229 have a comparable amount
-- 839 raw payer names (1,944 hospital-specific payer/plan strings) resolve to 44 payers and 82 payer × plan-type plans. 140 of those strings stay `unresolved`, mostly Medicare Advantage plans from carriers outside Idaho
+- 839 raw payer names appear in 1,944 hospital-specific payer/plan strings. 1,804 of those strings (92.8%) resolve to 38 known payers and 76 payer × plan-type plans. The other 140 stay `unresolved`, mostly Medicare Advantage plans from carriers outside Idaho, and keep their cleaned names as their own payers
 - 817 comparison groups, none mixing pricing methods
+
+`hpc check` prints the comparable-rate and payer-resolution numbers above.
 
 The flags on those rates: 150,130 `ok`, 12,539 `payer_unresolved`, 11,597 `billing_class_assumed` (the West Valley JSON and St. Luke's files), 2,588 `above_gross`, 1,999 `method_inferred` and 1,376 `pct_derived`. The remaining 225 are `no_amount` or `method_unknown`.
 

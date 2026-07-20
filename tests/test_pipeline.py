@@ -18,8 +18,10 @@ def test_every_hospital_and_encoding_loads(loaded_db):
 
 def test_no_comparison_group_mixes_methods(loaded_db):
     con = duckdb.connect(str(loaded_db), read_only=True)
-    assert con.execute("SELECT max(methods_in_group), max(units_in_group) "
-                       "FROM v_compare_summary").fetchone() == (1, 1)
+    assert con.execute("""
+        SELECT max(n) FROM (SELECT count(DISTINCT pricing_method) AS n
+                            FROM v_rate_compare GROUP BY comparison_group)
+    """).fetchone()[0] == 1
     # Percent-of-charges rates and dollar rates exist for the same code, separately.
     methods = {m for (m,) in con.execute(
         "SELECT DISTINCT pricing_method FROM v_rate_compare WHERE code = '45378'").fetchall()}
@@ -54,3 +56,39 @@ def test_compare_csv_output(loaded_db, capsys):
 
 def test_compare_unknown_code(loaded_db, capsys):
     assert main(["compare", "--db", str(loaded_db), "--code", "00000"]) == 1
+
+
+def _corrupted_copy(loaded_db, tmp_path):
+    import shutil
+    db = tmp_path / "corrupt.duckdb"
+    shutil.copy(loaded_db, db)
+    return db
+
+
+def test_check_fails_when_a_group_mixes_units(loaded_db, tmp_path, capsys):
+    db = _corrupted_copy(loaded_db, tmp_path)
+    con = duckdb.connect(str(db))
+    # A percent-of-charges rate relabelled as dollars inside its group.
+    con.execute("""UPDATE fact_rate SET compare_unit = 'usd' WHERE rowid = (
+                       SELECT min(rowid) FROM fact_rate
+                       WHERE pricing_method = 'percent_of_charges')""")
+    con.close()
+    assert main(["check", "--db", str(db)]) == 1
+    assert "FAIL  no comparison mixes pricing methods" in capsys.readouterr().out
+
+
+def test_check_fails_when_ranking_ignores_pricing_method(loaded_db, tmp_path, capsys):
+    from hpc.db import SQL_DIR
+    db = _corrupted_copy(loaded_db, tmp_path)
+    schema = (SQL_DIR / "schema.sql").read_text()
+    view = schema[schema.index("CREATE OR REPLACE VIEW v_rate_compare"):
+                  schema.index("-- Per-code summary")]
+    # Rank across methods: the median window no longer splits by pricing_method.
+    broken = view.replace(""",
+             f.pricing_method);""", ");")
+    assert broken != view
+    con = duckdb.connect(str(db))
+    con.execute(broken)
+    con.close()
+    assert main(["check", "--db", str(db)]) == 1
+    assert "FAIL  no comparison mixes pricing methods" in capsys.readouterr().out

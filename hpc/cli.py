@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import resource
 import sys
 from pathlib import Path
 
@@ -47,8 +48,10 @@ def cmd_ingest(args) -> int:
         "SELECT count(*), count(compare_amount) FROM fact_rate").fetchone()
     con.close()
     total = sum(r["rows"] for r in report)
+    peak_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
     print(f"staged {total:,} rows from {len(report)} hospitals; "
-          f"{facts:,} rates in fact_rate, {compared:,} comparable")
+          f"{facts:,} rates in fact_rate, {compared:,} comparable; "
+          f"peak memory {peak_mb:,.0f} MB (DuckDB limit {metro.memory_limit})")
     return 0
 
 
@@ -71,11 +74,24 @@ def cmd_check(args) -> int:
     checks.append(("encodings", encodings >= args.min_encodings,
                    f"{encodings} file encodings loaded (need {args.min_encodings})"))
 
-    mixed = con.execute("""
-        SELECT count(*) FROM v_compare_summary
-        WHERE methods_in_group <> 1 OR units_in_group <> 1
-    """).fetchone()[0]
-    groups = con.execute("SELECT count(*) FROM v_compare_summary").fetchone()[0]
+    # Each ranked group (one code, setting, billing class and modifier set)
+    # must hold one pricing method and one unit, and the window that computes
+    # its median must cover exactly that group's rates - no more, no fewer.
+    groups, mixed = con.execute("""
+        SELECT count(*),
+               count(*) FILTER (WHERE methods <> 1 OR units <> 1
+                                OR min_window <> rates OR max_window <> rates)
+        FROM (
+            SELECT comparison_group,
+                   count(DISTINCT pricing_method) AS methods,
+                   count(DISTINCT compare_unit) AS units,
+                   count(*) AS rates,
+                   min(group_rates) AS min_window,
+                   max(group_rates) AS max_window
+            FROM v_rate_compare
+            GROUP BY code, setting, billing_class, modifiers, comparison_group
+        )
+    """).fetchone()
     checks.append(("no comparison mixes pricing methods", mixed == 0 and groups > 0,
                    f"{groups:,} comparison groups, {mixed} mixed"))
     unit_mismatch = con.execute("""
@@ -98,6 +114,20 @@ def cmd_check(args) -> int:
     width = max(len(c[0]) for c in checks)
     for name, ok, detail in checks:
         print(f"{'PASS' if ok else 'FAIL'}  {name:<{width}}  {detail}")
+
+    comparable = con.execute("SELECT count(compare_amount) FROM fact_rate").fetchone()[0]
+    raw_names, strings, resolved, payers, plans = con.execute("""
+        SELECT count(DISTINCT payer_raw), count(*),
+               count(*) FILTER (WHERE m.match_method <> 'unresolved'),
+               count(DISTINCT pl.payer_id) FILTER (WHERE m.match_method <> 'unresolved'),
+               count(DISTINCT m.plan_id) FILTER (WHERE m.match_method <> 'unresolved')
+        FROM map_payer_plan m JOIN dim_plan pl USING (plan_id)
+    """).fetchone()
+    print(f"INFO  {comparable:,} of {facts:,} rates have a comparable amount")
+    if strings:
+        print(f"INFO  {raw_names:,} raw payer names in {strings:,} hospital payer/plan strings; "
+              f"{resolved:,} ({resolved / strings:.1%}) resolved to {payers} payers "
+              f"and {plans} payer x plan-type plans")
     con.close()
     return 0 if all(ok for _, ok, _ in checks) else 1
 
