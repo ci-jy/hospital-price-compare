@@ -51,7 +51,63 @@ flowchart LR
 
 ### Schema
 
-`sql/schema.sql`:
+`sql/schema.sql` defines a star schema with `fact_rate` in the middle:
+
+```mermaid
+erDiagram
+    dim_hospital ||--o{ fact_rate : "hospital_id"
+    dim_service  ||--o{ fact_rate : "service_id"
+    dim_plan     ||--o{ fact_rate : "plan_id"
+    dim_payer    ||--o{ dim_plan : "payer_id"
+    dim_plan     ||--o{ map_payer_plan : "plan_id"
+    dim_hospital ||--o{ map_payer_plan : "hospital_id"
+
+    dim_hospital {
+        varchar hospital_id PK
+        varchar hospital_name
+        varchar encoding
+        varchar mrf_url
+        varchar file_last_updated
+    }
+    dim_service {
+        int service_id PK
+        varchar code
+        varchar code_type
+        varchar description
+        int raw_descriptions
+    }
+    dim_payer {
+        int payer_id PK
+        varchar payer_name
+    }
+    dim_plan {
+        int plan_id PK
+        int payer_id FK
+        varchar plan_type
+    }
+    map_payer_plan {
+        varchar hospital_id PK
+        varchar payer_raw PK
+        varchar plan_raw PK
+        int plan_id FK
+        varchar match_method
+        double match_score
+    }
+    fact_rate {
+        varchar hospital_id FK
+        int service_id FK
+        int plan_id FK
+        varchar setting
+        varchar billing_class
+        varchar modifiers
+        double negotiated_dollar
+        double negotiated_percentage
+        varchar pricing_method
+        double compare_amount
+        varchar compare_unit
+        varchar quality_flag
+    }
+```
 
 - `dim_hospital`: one row per loaded file, with its encoding, source URL and file date
 - `dim_service`: one row per CPT / HCPCS / DRG code, plus how many different descriptions the files use for it
@@ -145,7 +201,7 @@ The first `ingest` downloads about 1.6 GB into `data/raw/` (gitignored), and unz
 python3 -m pytest -q
 ```
 
-55 tests run in about a second against `tests/fixtures/`: trimmed excerpts of the real St. Luke's Nampa wide CSV, Saint Alphonsus Nampa tall CSV, West Valley JSON and the Saint Alphonsus `cms-hpt.txt` (cut by `scripts/trim_fixtures.py`). They cover format detection including zips, the wide-file unpivot (row counts and values checked against an independent `csv` parse), streaming JSON, payer resolution including the `MA` ambiguity, every pricing-method rule, the `$0.76` case and its variants, and ingest → check → compare end to end.
+57 tests run in about a second against `tests/fixtures/`: trimmed excerpts of the real St. Luke's Nampa wide CSV, Saint Alphonsus Nampa tall CSV, West Valley JSON and the Saint Alphonsus `cms-hpt.txt` (cut by `scripts/trim_fixtures.py`). They cover format detection including zips, the wide-file unpivot (row counts and values checked against an independent `csv` parse), streaming JSON, payer resolution including the `MA` ambiguity, every pricing-method rule, the `$0.76` case and its variants, and ingest → check → compare end to end.
 
 `hpc check` is the data-level test for a real load. It asserts that every staged row became a rate, that enough hospitals and encodings are covered, that no comparison group mixes pricing methods or units, that every rate has a quality flag, and that every fact joins to its dimensions.
 
