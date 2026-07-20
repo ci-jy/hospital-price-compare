@@ -193,7 +193,7 @@ python3 -m hpc check --min-hospitals 5
 python3 -m hpc compare --code 45378
 ```
 
-The first `ingest` downloads about 1.6 GB into `data/raw/` (gitignored), and unzipping the two Saint Alphonsus files takes about 10 GB of disk. Later runs reuse the cached files unless the URL in `cms-hpt.txt` changes. With files cached, the default run (72 shoppable codes) takes about 30 seconds, stores 180,454 rates and peaks at 426 MB of memory (the command prints this).
+The first `ingest` downloads about 1.6 GB into `data/raw/` (gitignored), and unzipping the two Saint Alphonsus files takes about 10 GB of disk. Later runs reuse the cached files unless the URL in `cms-hpt.txt` changes. With files cached, the default run (72 shoppable codes) takes about 30 seconds, stores 180,454 rates and peaks at about 450 MB of memory (the command prints this).
 
 ## Testing
 
@@ -210,12 +210,12 @@ python3 -m pytest -q
 From the default load (72 shoppable codes, five hospitals):
 
 - 180,454 negotiated rates, of which 180,229 have a comparable amount
-- 839 raw payer names appear in 1,944 hospital-specific payer/plan strings. 1,804 of those strings (92.8%) resolve to 38 known payers and 76 payer × plan-type plans. The other 140 stay `unresolved`, mostly Medicare Advantage plans from carriers outside Idaho, and keep their cleaned names as their own payers
+- 839 raw payer names appear in 1,944 hospital-specific payer/plan strings. 1,806 of those strings (92.9%) resolve to 39 known payers and 77 payer × plan-type plans. The other 138 stay `unresolved`, mostly Medicare Advantage plans from carriers outside Idaho, and keep their cleaned names as their own payers
 - 817 comparison groups, none mixing pricing methods
 
 `hpc check` prints the comparable-rate and payer-resolution numbers above.
 
-The flags on those rates: 150,130 `ok`, 12,539 `payer_unresolved`, 11,597 `billing_class_assumed` (the West Valley JSON and St. Luke's files), 2,588 `above_gross`, 1,999 `method_inferred` and 1,376 `pct_derived`. The remaining 225 are `no_amount` or `method_unknown`.
+The flags on those rates: 150,130 `ok`, 12,327 `payer_unresolved`, 11,809 `billing_class_assumed` (the West Valley JSON and St. Luke's files), 2,588 `above_gross`, 1,999 `method_inferred` and 1,376 `pct_derived`. The remaining 225 are `no_amount` or `method_unknown`.
 
 ## Known issues
 
