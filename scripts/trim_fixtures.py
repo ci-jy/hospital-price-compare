@@ -6,9 +6,15 @@ from __future__ import annotations
 
 import csv
 import json
+import re
+import sys
 from pathlib import Path
 
 import ijson
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from hpc.discover import fetch_index  # noqa: E402
 
 RAW = Path("data/raw")
 OUT = Path("tests/fixtures")
@@ -29,8 +35,18 @@ def trim_csv(src: Path, dest: Path, keep, limit: int) -> None:
                     break
 
 
+def redact_contacts(text: str) -> str:
+    """cms-hpt.txt names a real person per location; keep them out of fixtures."""
+    text = re.sub(r"(?m)^contact-name:.*$", "contact-name: Example Contact", text)
+    return re.sub(r"(?m)^contact-email:.*$", "contact-email: contact@example.org", text)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
+    # First two locations of Saint Alphonsus's index, with contacts redacted.
+    _, index = fetch_index("saintalphonsus.org")
+    blocks = index.replace("\r\n", "\n").split("\n\n")[:2]
+    (OUT / "cms-hpt.txt").write_text(redact_contacts("\n\n".join(blocks)) + "\n")
     # Wide: both 45378 rows plus one lab code from St. Luke's Nampa.
     trim_csv(RAW / "stlukes-nampa.csv", OUT / "wide_stlukes_nampa.csv",
              lambda row: row[3] in ("45378", "85025"), limit=4)
