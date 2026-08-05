@@ -1,8 +1,13 @@
 # Boise City, ID metropolitan statistical area (Ada, Canyon, Boise, Gem and
-# Owyhee counties). Each hospital is located through the cms-hpt.txt file its
+# Owyhee counties) and the hospitals around it. The first five are the Boise
+# MSA's general acute hospitals and are what `--hospitals 5` loads. The MSA has
+# only one more hospital with a downloadable file (Treasure Valley), so the
+# rest come from the wider Boise-Mountain Home-Ontario area (Ontario, Weiser)
+# and from the two Boise systems' other hospitals in southern Idaho and
+# eastern Oregon, which contract with the same payers. Each hospital is located through the cms-hpt.txt file its
 # health system publishes at the root of its website (45 CFR 180.50(d)(6)).
 # `location` must match the `location-name` entry in that file.
-metro: Boise City, ID
+metro: Boise City, ID and southwest Idaho
 database: data/hpc.duckdb
 duckdb:
   memory_limit: 1GB
@@ -38,3 +43,38 @@ hospitals:
     city: Caldwell
     domain: westvalleymedctr.com
     location: WEST VALLEY MEDICAL CENTER
+  - id: treasure-valley
+    name: Treasure Valley Hospital
+    city: Boise
+    domain: treasurevalleyhospital.com
+    location: Treasure Valley Hospital
+  - id: saint-alphonsus-ontario
+    name: Saint Alphonsus Medical Center Ontario
+    city: Ontario, OR
+    domain: saintalphonsus.org
+    location: Saint Alphonsus Medical Center-Ontario
+  - id: weiser-memorial
+    name: Weiser Memorial Hospital
+    city: Weiser
+    domain: weisermemorialhospital.org
+    location: WEISER MEMORIAL HOSPITAL
+  - id: stlukes-magic-valley
+    name: St. Luke's Magic Valley Medical Center
+    city: Twin Falls
+    domain: stlukesonline.org
+    location: St. Luke's Magic Valley Standard Charges
+  - id: stlukes-wood-river
+    name: St. Luke's Wood River Medical Center
+    city: Ketchum
+    domain: stlukesonline.org
+    location: St. Luke's Wood River Standard Charges
+  - id: stlukes-mccall
+    name: St. Luke's McCall Medical Center
+    city: McCall
+    domain: stlukesonline.org
+    location: St. Luke's McCall Standard Charges
+  - id: saint-alphonsus-baker-city
+    name: Saint Alphonsus Medical Center Baker City
+    city: Baker City, OR
+    domain: saintalphonsus.org
+    location: Saint Alphonsus Medical Center Baker City
