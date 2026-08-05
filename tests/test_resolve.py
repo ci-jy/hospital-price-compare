@@ -7,7 +7,7 @@ from tests.conftest import ROOT
 @pytest.fixture(scope="module")
 def resolver():
     return PayerResolver.from_files(ROOT / "config" / "payers.yaml",
-                                    ROOT / "config" / "payer_map.csv")
+                                    ROOT / "data" / "payer_map.csv")
 
 
 def test_clean_strips_ids_and_campus_prefix():
@@ -38,7 +38,14 @@ def test_alias_resolution(resolver, payer, plan, canonical, plan_type):
 
 def test_ma_means_medicaid_for_a_medicaid_only_payer(resolver):
     assert resolver.resolve("Molina", "MA").plan_type == "medicaid"
-    assert resolver.resolve("Humana", "MA").plan_type == "medicare_advantage"
+
+
+def test_bare_ma_is_left_ambiguous_not_guessed(resolver):
+    # Humana sells Medicare Advantage and, in other states, Medicaid plans.
+    r = resolver.resolve("Humana", "MA")
+    assert (r.payer_name, r.plan_type, r.method) == ("Humana", "unknown", "ambiguous")
+    # Spelled out, it is not ambiguous.
+    assert resolver.resolve("Humana", "MA PPO").plan_type == "medicare_advantage"
 
 
 def test_ma_with_medicaid_in_text_is_medicaid():

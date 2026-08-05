@@ -4,13 +4,25 @@ Hospitals spell payers their own way ("BLUE CROSS IDAHO [1007]", "Blue Cross ",
 "BCI HMO") and none of the encodings has a plan-type field, so plan type is
 read out of the free text. Resolution runs in this order:
 
-1. reviewed rows in config/payer_map.csv (exact payer_raw, plan_raw or '*')
+1. hand-checked rows in data/payer_map.csv (exact payer_raw, plan_raw or
+   '*'): status `reviewed` fixes the payer and plan type, status
+   `ambiguous` keeps the plan type `unknown` on purpose
 2. alias rules from config/payers.yaml, longest alias first, on the payer
    name and then on the plan name (some files put "COMMERCIAL" in the payer
    column and the real network in the plan column)
 3. RapidFuzz similarity against every alias, for typos and suffixes
 4. otherwise the cleaned raw name is kept as its own payer and marked
    'unresolved' so `hpc payers` can list it for review
+
+A bare "MA" plan code is the classic ambiguous case: Medicare Advantage at
+most carriers, "Medical Assistance" (Medicaid) at others. Unless the payer
+only runs Medicaid business, it is not guessed: the plan type stays `unknown`
+and the match is marked `ambiguous`.
+
+`write_payer_map` keeps data/payer_map.csv in step with the loaded files:
+every raw payer/plan pair gets a row, new pairs come in as `auto` (or
+`unresolved` / `ambiguous`) for review, and hand-checked rows are never
+overwritten.
 """
 from __future__ import annotations
 
@@ -25,7 +37,14 @@ from rapidfuzz import fuzz, process
 FUZZY_CUTOFF = 88.0
 
 PLAN_TYPES = ("medicare_advantage", "medicare", "medicaid", "exchange",
-              "workers_comp", "military", "commercial")
+              "workers_comp", "military", "commercial", "unknown")
+
+# data/payer_map.csv
+MAP_FIELDS = ["payer_raw", "plan_raw", "payer_name", "plan_type", "status",
+              "match_method", "match_score", "hospitals", "note"]
+# statuses a person sets after checking a row; the pipeline never changes them
+CHECKED_STATUSES = ("reviewed", "ambiguous")
+MAP_STATUSES = CHECKED_STATUSES + ("auto", "unresolved")
 
 _BRACKETS = re.compile(r"\[[^\]]*\]|\([^)]*\)")
 _HOSPITAL_PREFIX = re.compile(r"^(HB|PB)\s+(NAMPA|BOISE|MERIDIAN|MAGIC VALLEY|MSTI|SLRMC)\s+")
@@ -70,7 +89,7 @@ def classify_plan_type(payer_text: str, plan_text: str, medicaid_mco: bool = Fal
     if any(_has(text, p) for p in _MA_PATTERNS):
         return "medicare_advantage"
     if _has(text, "MA"):
-        return "medicaid" if medicaid_mco else "medicare_advantage"
+        return "medicaid" if medicaid_mco else "unknown"
     if _has(text, "MEDICARE") or _has(text, "MCR"):
         return "medicaid" if medicaid_mco else "medicare"
     if medicaid_mco:
@@ -88,7 +107,7 @@ def classify_plan_type(payer_text: str, plan_text: str, medicaid_mco: bool = Fal
 class Resolution:
     payer_name: str
     plan_type: str
-    method: str          # reviewed | alias | fuzzy | unresolved
+    method: str          # reviewed | alias | fuzzy | ambiguous | unresolved
     score: float | None = None
 
 
@@ -112,8 +131,10 @@ class PayerResolver:
         self.program_aliases.sort(key=lambda a: -len(a[0]))
         self._all = self.aliases + self.program_aliases
         self._alias_choices = [a for a, _ in self._all]
+        # Rows without a status come from the older reviewed-only format.
         self.reviewed = {(r["payer_raw"].strip(), r["plan_raw"].strip()): r
-                         for r in reviewed or []}
+                         for r in reviewed or []
+                         if (r.get("status") or "reviewed") in CHECKED_STATUSES}
 
     @classmethod
     def from_files(cls, payers_yaml: Path, payer_map_csv: Path | None = None) -> "PayerResolver":
@@ -130,10 +151,17 @@ class PayerResolver:
                 return canonical
         return None
 
-    def resolve(self, payer_raw: str, plan_raw: str) -> Resolution:
+    def resolve(self, payer_raw: str, plan_raw: str, use_reviewed: bool = True) -> Resolution:
+        """Resolve one raw pair. `use_reviewed=False` runs the automatic
+        rules only, which is how they are scored against the review."""
         payer_raw, plan_raw = (payer_raw or "").strip(), (plan_raw or "").strip()
-        hit = self.reviewed.get((payer_raw, plan_raw)) or self.reviewed.get((payer_raw, "*"))
+        hit = use_reviewed and (self.reviewed.get((payer_raw, plan_raw))
+                                or self.reviewed.get((payer_raw, "*")))
         if hit:
+            if (hit.get("status") or "reviewed") == "ambiguous":
+                auto = self.resolve(payer_raw, plan_raw, use_reviewed=False)
+                return Resolution(hit.get("payer_name") or auto.payer_name, "unknown",
+                                  "ambiguous", None)
             return Resolution(hit["payer_name"], hit["plan_type"], "reviewed", 100.0)
 
         payer_c, plan_c = clean(payer_raw), clean(plan_raw)
@@ -157,4 +185,66 @@ class PayerResolver:
         if canonical == "Medicare" and plan_type == "medicare_advantage":
             # A private Medicare Advantage plan whose carrier we don't know.
             canonical, method, score = "Medicare Advantage (unlisted carrier)", "unresolved", None
+        if plan_type == "unknown" and method != "unresolved":
+            method = "ambiguous"
         return Resolution(canonical, plan_type, method, score)
+
+
+def _status(method: str) -> str:
+    return {"reviewed": "reviewed", "ambiguous": "ambiguous",
+            "unresolved": "unresolved"}.get(method, "auto")
+
+
+def read_payer_map(path: Path) -> list[dict[str, str]]:
+    if not Path(path).exists():
+        return []
+    with open(path, newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def write_payer_map(mapping, path: Path) -> dict[str, int]:
+    """Merge resolved pairs into data/payer_map.csv; returns counts by status.
+
+    `mapping` has hospital_id, payer_raw, plan_raw, payer_name, plan_type,
+    match_method and match_score columns (one row per hospital and pair).
+    Hand-checked rows keep their payer, plan type, status and note; every
+    other row is rewritten from the current resolution. Pairs no longer in
+    the data are kept, so loading fewer hospitals never drops reviewed work.
+    """
+    existing = {(r["payer_raw"], r["plan_raw"]): r for r in read_payer_map(path)}
+    seen: dict[tuple[str, str], dict] = {}
+    for r in mapping.itertuples():
+        key = (r.payer_raw, r.plan_raw)
+        if key in seen:
+            seen[key]["hospitals"].add(r.hospital_id)
+            continue
+        old = existing.get(key, {})
+        hospitals = {h for h in (old.get("hospitals") or "").split(";") if h}
+        hospitals.add(r.hospital_id)
+        if (old.get("status") or "") in CHECKED_STATUSES:
+            row = {**old}
+        else:
+            score = "" if r.match_score is None or r.match_score != r.match_score \
+                else f"{r.match_score:.0f}"
+            row = {"payer_raw": r.payer_raw, "plan_raw": r.plan_raw,
+                   "payer_name": r.payer_name, "plan_type": r.plan_type,
+                   "status": _status(r.match_method), "match_method": r.match_method,
+                   "match_score": score, "note": old.get("note", "")}
+        row["hospitals"] = hospitals
+        seen[key] = row
+    for key, old in existing.items():
+        if key not in seen:
+            seen[key] = {**old, "hospitals": {h for h in (old.get("hospitals") or "").split(";")
+                                              if h}}
+    rows = sorted(seen.values(), key=lambda r: (r["payer_name"].lower(), r["payer_raw"],
+                                                r["plan_raw"]))
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    counts: dict[str, int] = {}
+    with open(path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=MAP_FIELDS, extrasaction="ignore")
+        w.writeheader()
+        for row in rows:
+            row["hospitals"] = ";".join(sorted(row["hospitals"]))
+            w.writerow(row)
+            counts[row.get("status") or "reviewed"] = counts.get(row.get("status") or "reviewed", 0) + 1
+    return counts

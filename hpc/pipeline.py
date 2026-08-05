@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 
 import requests
 
-from hpc import build, discover
+from hpc import build, discover, resolve
 from hpc.config import Hospital, Metro
 from hpc.db import apply_schema, connect
 from hpc.ingest import stage_file
@@ -94,7 +94,11 @@ def ingest(metro: Metro, n_hospitals: int | None = None, all_codes: bool = False
             secs = time.perf_counter() - started
             log.info("%-24s %-5s %9d rows  %6.1fs", h.id, fmt, n, secs)
             report.append({"hospital_id": h.id, "encoding": fmt, "rows": n, "seconds": secs})
-        build.rebuild(con, build.default_resolver(metro.root))
+        mapping = build.rebuild(con, build.default_resolver(metro.root))
+        if not files:
+            counts = resolve.write_payer_map(mapping, metro.root / "data" / "payer_map.csv")
+            log.info("data/payer_map.csv: %s", ", ".join(f"{v} {k}" for k, v in
+                                                         sorted(counts.items())))
     finally:
         con.close()
     return report
