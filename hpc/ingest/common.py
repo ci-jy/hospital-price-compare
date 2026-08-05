@@ -34,9 +34,18 @@ def read_csv_preamble(path: Path) -> tuple[dict[str, str], list[str]]:
     return meta, header
 
 
+def norm_name(name: str) -> str:
+    """Lower-case a header name and drop spaces around '|' separators.
+
+    Most files write ``standard_charge|gross``; Weiser Memorial writes
+    ``standard_charge | gross``.
+    """
+    return "|".join(part.strip() for part in name.lower().split("|"))
+
+
 def code_columns(header: list[str]) -> list[tuple[str, str]]:
     """Pairs of (code column, code-type column) present in a CSV header."""
-    lower = {h.lower(): h for h in header}
+    lower = {norm_name(h): h for h in header}
     pairs = []
     for i in range(1, 10):
         c, t = lower.get(f"code|{i}"), lower.get(f"code|{i}|type")
@@ -60,14 +69,15 @@ def code_select_sql(header: list[str]) -> tuple[str, str]:
 
 
 def col_or_null(header: list[str], *names: str) -> str:
-    lower = {h.lower(): h for h in header}
+    lower = {norm_name(h): h for h in header}
     for n in names:
         if n in lower:
             return ident(lower[n])
     return "NULL"
 
 
-def read_csv_sql(path: Path) -> str:
+def read_csv_sql(path: Path, encoding: str = "utf-8") -> str:
     return (f"read_csv({sql_str(str(path))}, skip=2, header=true, all_varchar=true, "
+            f"encoding={sql_str(encoding)}, "
             f"quote='\"', escape='\"', null_padding=true, max_line_size=2097152, "
             f"ignore_errors=false)")

@@ -10,7 +10,7 @@ from hpc.ingest.common import (code_select_sql, col_or_null, read_csv_preamble,
 
 
 def load_tall(con: duckdb.DuckDBPyConnection, path: Path, hospital_id: str,
-              codes: set[str] | None) -> dict[str, str]:
+              codes: set[str] | None, encoding: str = "utf-8") -> dict[str, str]:
     meta, header = read_csv_preamble(path)
     code_expr, type_expr = code_select_sql(header)
     c = lambda *names: col_or_null(header, *names)  # noqa: E731
@@ -37,7 +37,7 @@ def load_tall(con: duckdb.DuckDBPyConnection, path: Path, hospital_id: str,
                    {c('estimated_amount', 'median_amount')} AS estimated_amount,
                    lower(trim({c('standard_charge|methodology')})) AS methodology,
                    {c('additional_generic_notes', 'additional_payer_notes')} AS notes
-            FROM {read_csv_sql(path)}
+            FROM {read_csv_sql(path, encoding)}
         ) WHERE {where}
     """)
     return meta

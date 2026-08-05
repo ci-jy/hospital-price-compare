@@ -32,7 +32,15 @@ def stage_file(con: duckdb.DuckDBPyConnection, path: Path, hospital_id: str,
         con.register("tmp_codes_df", pd.DataFrame({"code": sorted(codes)}))
         con.execute("INSERT INTO tmp_codes SELECT code FROM tmp_codes_df")
         con.unregister("tmp_codes_df")
-    meta = READERS[fmt](con, path, hospital_id, codes)
+    try:
+        meta = READERS[fmt](con, path, hospital_id, codes)
+    except duckdb.InvalidInputException as exc:
+        # A few files are Windows-1252/Latin-1 (Treasure Valley writes
+        # "G0465?" with a stray 0xA0); DuckDB stops at the first bad byte.
+        if fmt == "json" or "utf-8" not in str(exc).lower():
+            raise
+        con.execute("DELETE FROM stg_rate WHERE hospital_id = ?", [hospital_id])
+        meta = READERS[fmt](con, path, hospital_id, codes, encoding="latin-1")
     n = con.execute("SELECT count(*) FROM stg_rate WHERE hospital_id = ?",
                     [hospital_id]).fetchone()[0]
     return fmt, meta, n

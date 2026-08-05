@@ -39,7 +39,7 @@ def payer_columns(header: list[str]) -> list[str]:
 
 
 def load_wide(con: duckdb.DuckDBPyConnection, path: Path, hospital_id: str,
-              codes: set[str] | None) -> dict[str, str]:
+              codes: set[str] | None, encoding: str = "utf-8") -> dict[str, str]:
     meta, header = read_csv_preamble(path)
     code_expr, type_expr = code_select_sql(header)
     c = lambda *names: col_or_null(header, *names)  # noqa: E731
@@ -63,7 +63,7 @@ def load_wide(con: duckdb.DuckDBPyConnection, path: Path, hospital_id: str,
                    {c('standard_charge|gross')} AS gross_charge,
                    {c('standard_charge|discounted_cash')} AS cash_price,
                    {payer_select}
-            FROM {read_csv_sql(path)}
+            FROM {read_csv_sql(path, encoding)}
         ) WHERE {where}
     """)
     con.execute(f"""
