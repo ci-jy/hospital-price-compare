@@ -1,82 +1,19 @@
 -- stg_rate -> fact_rate. Expects dim_service, map_payer_plan and dim_hospital
--- to be filled already. Every rate gets a pricing method and a quality flag.
-
-CREATE OR REPLACE MACRO parse_num(x) AS
-    TRY_CAST(nullif(regexp_replace(trim(x), '[$,%\s]', '', 'g'), '') AS DOUBLE);
+-- to be filled already, and the rate_classified view from hpc/method.py
+-- (pricing method, compare amount and value checks per staged row). Every
+-- rate gets a quality flag.
 
 DELETE FROM fact_rate;
 
 INSERT INTO fact_rate
-WITH parsed AS (
-    SELECT s.*,
-           parse_num(s.negotiated_dollar) AS d_raw,
-           parse_num(s.negotiated_percentage) AS pct_raw,
-           parse_num(s.gross_charge) AS gross,
-           coalesce(s.methodology, '') AS m,
-           coalesce(lower(s.negotiated_algorithm), '') AS alg
-    FROM stg_rate s
-),
-classified AS (
-    SELECT *,
-        CASE
-            WHEN m LIKE '%per diem%' THEN 'per_diem'
-            WHEN m LIKE '%case rate%' THEN 'case_rate'
-            WHEN m LIKE '%percent%' THEN 'percent_of_charges'
-            WHEN m = 'fee schedule' THEN 'flat_dollar'
-            WHEN alg LIKE '%per diem%' OR alg LIKE '%per day%' THEN 'per_diem'
-            WHEN alg LIKE '%case rate%' THEN 'case_rate'
-            WHEN pct_raw IS NOT NULL AND d_raw IS NULL THEN 'percent_of_charges'
-            WHEN d_raw IS NULL AND (alg LIKE '%percent%' OR alg LIKE '%\% of%' ESCAPE '\'
-                                    OR alg LIKE '%billed charges%') THEN 'percent_of_charges'
-            WHEN d_raw IS NOT NULL THEN 'flat_dollar'
-            ELSE 'other'
-        END AS pricing_method,
-        m NOT IN ('fee schedule', 'case rate', 'per diem',
-                  'percent of total billed charges') AS method_inferred
-    FROM parsed
-),
-repaired AS (
-    -- Percent-of-charges rates where the percentage column is empty. The
-    -- number is recovered, in order, from text like "79.1% of billable gross
-    -- charges" in the notes, from dollar / gross charge, or - when there is
-    -- no usable gross charge and the dollar value is at most 1 (a "$0.76"
-    -- that can only be a fraction) - from the dollar column itself.
-    SELECT *,
-        TRY_CAST(nullif(regexp_extract(coalesce(notes, '') || ' ' || alg,
-                                       '(\d+(?:\.\d+)?)\s*%', 1), '') AS DOUBLE) AS pct_text,
-        CASE WHEN gross > 0 THEN d_raw / gross * 100 END AS pct_ratio,
-        pricing_method = 'percent_of_charges' AND pct_raw IS NULL AS pct_missing
-    FROM classified
-),
-amounts AS (
-    SELECT *,
-        pct_missing AND pct_text IS NULL AND d_raw > 0 AND d_raw <= 1
-            AND (pct_ratio IS NULL OR pct_ratio < 1) AS pct_in_dollar,
-        (pct_raw > 0 AND pct_raw <= 1) AS pct_fraction,
-        pct_missing AND (pct_text IS NOT NULL OR pct_ratio >= 1) AS pct_derived
-    FROM repaired
-),
-values AS (
-    SELECT *,
-        CASE WHEN pct_in_dollar THEN NULL ELSE d_raw END AS dollar,
-        CASE WHEN pct_in_dollar THEN d_raw * 100
-             WHEN pct_fraction THEN pct_raw * 100
-             WHEN pct_missing AND pct_text IS NOT NULL THEN pct_text
-             WHEN pct_missing AND pct_ratio >= 1 THEN round(pct_ratio, 2)
-             ELSE pct_raw END AS pct
-    FROM amounts
-),
-final AS (
-    SELECT *,
-        CASE WHEN pricing_method = 'percent_of_charges' THEN pct ELSE dollar END AS amount
-    FROM values
-),
-flagged AS (
+WITH flagged AS (
     SELECT f.*, mp.plan_id, mp.match_method,
         list_filter([
             CASE WHEN pct_in_dollar THEN 'pct_in_dollar_field' END,
             CASE WHEN pct_fraction THEN 'pct_rescaled' END,
             CASE WHEN pct_derived THEN 'pct_derived' END,
+            CASE WHEN method_value_mismatch THEN 'method_value_mismatch' END,
+            CASE WHEN pct_of_fee_schedule THEN 'pct_of_fee_schedule' END,
             CASE WHEN pricing_method = 'other' THEN 'method_unknown' END,
             CASE WHEN amount IS NULL THEN 'no_amount' END,
             CASE WHEN amount = 0 THEN 'zero_amount' END,
@@ -85,10 +22,11 @@ flagged AS (
             CASE WHEN pricing_method = 'percent_of_charges' AND amount > 100
                  THEN 'pct_over_100' END,
             CASE WHEN mp.match_method = 'unresolved' THEN 'payer_unresolved' END,
+            CASE WHEN mp.match_method = 'ambiguous' THEN 'plan_type_ambiguous' END,
             CASE WHEN method_inferred THEN 'method_inferred' END,
             CASE WHEN f.billing_class IS NULL THEN 'billing_class_assumed' END
         ], x -> x IS NOT NULL) AS flags
-    FROM final f
+    FROM rate_classified f
     JOIN map_payer_plan mp
       ON mp.hospital_id = f.hospital_id
      AND mp.payer_raw = coalesce(f.payer_name, '')

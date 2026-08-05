@@ -6,6 +6,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
+from hpc import method
 from hpc.db import SQL_DIR
 from hpc.resolve import PayerResolver
 
@@ -62,17 +63,20 @@ def build_payers(con: duckdb.DuckDBPyConnection, resolver: PayerResolver) -> pd.
 
 
 def build_facts(con: duckdb.DuckDBPyConnection) -> None:
+    method.create_view(con)
     con.execute((SQL_DIR / "normalize.sql").read_text())
 
 
-def rebuild(con: duckdb.DuckDBPyConnection, resolver: PayerResolver) -> None:
+def rebuild(con: duckdb.DuckDBPyConnection, resolver: PayerResolver) -> pd.DataFrame:
+    """Rebuild every table from stg_rate; returns the payer resolution rows."""
     # Facts reference the dimensions, so clear them first.
     con.execute("DELETE FROM fact_rate")
     build_services(con)
-    build_payers(con, resolver)
+    mapping = build_payers(con, resolver)
     build_facts(con)
+    return mapping
 
 
 def default_resolver(root: Path) -> PayerResolver:
     return PayerResolver.from_files(root / "config" / "payers.yaml",
-                                    root / "config" / "payer_map.csv")
+                                    root / "data" / "payer_map.csv")
