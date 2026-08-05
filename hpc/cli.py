@@ -8,9 +8,12 @@ import resource
 import sys
 from pathlib import Path
 
+from hpc import coverage
 from hpc import discover as disc
 from hpc.config import load_metro
 from hpc.db import connect
+from hpc.resolve import (CHECKED_STATUSES, MAP_STATUSES, PayerResolver, read_payer_map,
+                         score_against_review)
 
 DEFAULT_METRO = "config/metro.yaml"
 
@@ -112,25 +115,68 @@ def cmd_check(args) -> int:
     """).fetchone()[0]
     checks.append(("facts join to dimensions", orphans == 0, f"{orphans} orphan rates"))
 
+    payer_map_path = Path(args.payer_map) if args.payer_map else \
+        _db(args).parent / "payer_map.csv"
+    map_rows = read_payer_map(payer_map_path)
+    if args.require_payer_map:
+        checks.extend(_payer_map_checks(con, map_rows, payer_map_path))
+
     width = max(len(c[0]) for c in checks)
     for name, ok, detail in checks:
         print(f"{'PASS' if ok else 'FAIL'}  {name:<{width}}  {detail}")
 
-    comparable = con.execute("SELECT count(compare_amount) FROM fact_rate").fetchone()[0]
-    raw_names, strings, resolved, payers, plans = con.execute("""
-        SELECT count(DISTINCT payer_raw), count(*),
-               count(*) FILTER (WHERE m.match_method <> 'unresolved'),
-               count(DISTINCT pl.payer_id) FILTER (WHERE m.match_method <> 'unresolved'),
-               count(DISTINCT m.plan_id) FILTER (WHERE m.match_method <> 'unresolved')
-        FROM map_payer_plan m JOIN dim_plan pl USING (plan_id)
-    """).fetchone()
-    print(f"INFO  {comparable:,} of {facts:,} rates have a comparable amount")
-    if strings:
-        print(f"INFO  {raw_names:,} raw payer names in {strings:,} hospital payer/plan strings; "
-              f"{resolved:,} ({resolved / strings:.1%}) resolved to {payers} payers "
-              f"and {plans} payer x plan-type plans")
+    cov = coverage.measure(con)
+    t = cov["totals"]
+    print(f"INFO  {t['comparable']:,} of {t['rates']:,} rates ({t['comparable_share']:.1%}) "
+          f"have a comparable amount")
+    if t["strings"]:
+        print(f"INFO  {t['raw_names']:,} raw payer names in {t['strings']:,} hospital "
+              f"payer/plan strings; {t['resolved']:,} ({t['resolved_share']:.1%}) resolved "
+              f"to {t['payers']} payers and {t['plans']} payer x plan-type plans, "
+              f"{t['ambiguous']} left ambiguous")
+    agree, reviewed = score_against_review(
+        PayerResolver.from_files(Path(args.metro).parent / "payers.yaml"), map_rows) \
+        if map_rows else (0, 0)
+    if reviewed:
+        print(f"INFO  automatic rules agree with {agree} of {reviewed} hand-checked "
+              f"payer_map.csv rows ({agree / reviewed:.1%})")
     con.close()
+    # The report describes the project database; a --db run only writes one
+    # when asked to.
+    report = args.report if args.report is not None else \
+        (None if args.db else str(Path(args.metro).resolve().parent.parent
+                                  / "reports" / "coverage.md"))
+    if report:
+        coverage.write_report(cov, Path(report), checks, (agree, reviewed))
+        print(f"wrote {report}")
     return 0 if all(ok for _, ok, _ in checks) else 1
+
+
+def _payer_map_checks(con, map_rows: list[dict], path: Path) -> list[tuple[str, bool, str]]:
+    """data/payer_map.csv must cover every loaded payer/plan string, hold
+    hand-checked rows, and its ambiguous rows must stay unresolved."""
+    out = [("payer map exists", bool(map_rows), f"{len(map_rows):,} rows in {path}")]
+    keys = {(r["payer_raw"], r["plan_raw"]) for r in map_rows}
+    wild = {r["payer_raw"] for r in map_rows if r["plan_raw"] == "*"}
+    pairs = con.execute("SELECT DISTINCT payer_raw, plan_raw FROM map_payer_plan").fetchall()
+    missing = [p for p in pairs if p not in keys and p[0] not in wild]
+    out.append(("payer map covers every raw name", not missing,
+                f"{len(pairs) - len(missing):,} of {len(pairs):,} payer/plan strings listed"
+                + (f"; missing e.g. {missing[0]}" if missing else "")))
+    bad = [r for r in map_rows if r.get("status") not in MAP_STATUSES]
+    checked = [r for r in map_rows if r.get("status") in CHECKED_STATUSES]
+    out.append(("payer map rows have a status and some are reviewed",
+                not bad and bool(checked),
+                f"{len(checked)} hand-checked, {len(bad)} without a valid status"))
+    ambiguous = {(r["payer_raw"], r["plan_raw"]) for r in map_rows
+                 if r.get("status") == "ambiguous"}
+    guessed = [p for p in con.execute("""
+        SELECT DISTINCT m.payer_raw, m.plan_raw FROM map_payer_plan m
+        JOIN dim_plan pl USING (plan_id) WHERE pl.plan_type <> 'unknown'
+    """).fetchall() if p in ambiguous]
+    out.append(("ambiguous names stay unresolved", not guessed,
+                f"{len(ambiguous)} ambiguous in the map, {len(guessed)} given a plan type"))
+    return out
 
 
 def _fmt_amount(value: float, unit: str) -> str:
@@ -240,6 +286,12 @@ def build_parser() -> argparse.ArgumentParser:
     common(sp)
     sp.add_argument("--min-hospitals", type=int, default=1)
     sp.add_argument("--min-encodings", type=int, default=1)
+    sp.add_argument("--require-payer-map", action="store_true",
+                    help="fail unless data/payer_map.csv covers every raw payer/plan name")
+    sp.add_argument("--payer-map", help="payer map CSV (default: payer_map.csv next to the DB)")
+    sp.add_argument("--report", default=None,
+                    help="markdown coverage report (default: reports/coverage.md "
+                         "unless --db is given; '' to skip)")
     sp.set_defaults(func=cmd_check)
 
     sp = sub.add_parser("compare", help="rates for one CPT/HCPCS code by hospital and payer")
