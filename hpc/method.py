@@ -163,8 +163,9 @@ def classify(rows: list[dict]) -> pd.DataFrame:
             SELECT pricing_method, amount,
                    CASE WHEN pricing_method = 'percent_of_charges'
                         THEN 'pct_of_charges' ELSE 'usd' END AS compare_unit,
-                   method_inferred, pct_in_dollar, pct_fraction, pct_derived,
-                   pct_of_fee_schedule, method_value_mismatch
+                   COLUMNS(c -> c IN ('method_inferred', 'pct_in_dollar', 'pct_fraction',
+                                      'pct_derived', 'pct_of_fee_schedule',
+                                      'method_value_mismatch')) IS TRUE
             FROM rate_classified ORDER BY row_no
         """).df()
     finally:

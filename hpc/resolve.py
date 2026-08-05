@@ -248,3 +248,25 @@ def write_payer_map(mapping, path: Path) -> dict[str, int]:
             w.writerow(row)
             counts[row.get("status") or "reviewed"] = counts.get(row.get("status") or "reviewed", 0) + 1
     return counts
+
+
+def score_against_review(resolver: PayerResolver,
+                         rows: list[dict[str, str]]) -> tuple[int, int]:
+    """How many hand-checked rows the automatic rules get right on their own.
+
+    A `reviewed` row counts when the rules give the same payer and plan type;
+    an `ambiguous` row counts when the rules also leave the plan type
+    unknown. Returns (agreeing, checked).
+    """
+    agree = total = 0
+    for row in rows:
+        status = row.get("status") or "reviewed"
+        if status not in CHECKED_STATUSES or row["plan_raw"] == "*":
+            continue
+        total += 1
+        auto = resolver.resolve(row["payer_raw"], row["plan_raw"], use_reviewed=False)
+        if status == "ambiguous":
+            agree += auto.plan_type == "unknown"
+        else:
+            agree += (auto.payer_name, auto.plan_type) == (row["payer_name"], row["plan_type"])
+    return agree, total
