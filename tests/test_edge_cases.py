@@ -49,6 +49,12 @@ def rebuild(con, resolver=None):
 
 # --- 'MA' ambiguity -------------------------------------------------------
 
+def test_blue_cross_state_code_ma_is_massachusetts_not_medicare_advantage():
+    resolver = build.default_resolver(ROOT)
+    r = resolver.resolve("BLUE CROSS - MA", "BCI HMO", use_reviewed=False)
+    assert (r.payer_name, r.plan_type, r.method) == ("Blue Cross of Idaho", "commercial", "alias")
+
+
 def test_ma_plan_is_flagged_and_kept_out_of_known_plan_types(con):
     stage(con, payer_name="HUMANA", plan_name="MA", negotiated_dollar="900",
           methodology="fee schedule")
@@ -67,15 +73,15 @@ def test_ambiguous_row_in_the_map_overrides_an_auto_guess():
     resolver = PayerResolver(
         {"Aetna": ["AETNA"]},
         [{"payer_raw": "AETNA", "plan_raw": "AETNA MA", "payer_name": "Aetna",
-          "plan_type": "", "status": "ambiguous"},
+          "plan_type": "", "status": "ambiguous", "reviewed": "yes"},
          {"payer_raw": "AETNA", "plan_raw": "AETNA MA HMO", "payer_name": "Aetna",
-          "plan_type": "medicare_advantage", "status": "reviewed"}])
+          "plan_type": "medicare_advantage", "status": "resolved", "reviewed": "yes"}])
     assert resolver.resolve("AETNA", "AETNA MA").plan_type == "unknown"
     assert resolver.resolve("AETNA", "AETNA MA HMO").method == "reviewed"
-    # auto rows are suggestions only and never override the rules
+    # rows nobody has checked are suggestions only and never override the rules
     auto = PayerResolver({"Aetna": ["AETNA"]}, [
         {"payer_raw": "AETNA", "plan_raw": "PPO", "payer_name": "Somebody Else",
-         "plan_type": "medicaid", "status": "auto"}])
+         "plan_type": "medicaid", "status": "resolved", "reviewed": "no"}])
     assert auto.resolve("AETNA", "PPO").payer_name == "Aetna"
 
 
@@ -168,8 +174,9 @@ def test_payer_map_keeps_reviewed_rows_and_adds_new_ones(tmp_path):
     path = tmp_path / "payer_map.csv"
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["payer_raw", "plan_raw", "payer_name", "plan_type", "status", "note"])
-        w.writerow(["COMMERCIAL", "HB AMPS", "AMPS", "commercial", "reviewed", "checked"])
+        w.writerow(["payer_raw", "plan_raw", "payer_name", "plan_type", "status", "reviewed",
+                    "note"])
+        w.writerow(["COMMERCIAL", "HB AMPS", "AMPS", "commercial", "resolved", "yes", "checked"])
     counts = write_payer_map(_mapping([
         ("a", "COMMERCIAL", "HB AMPS", "Commercial", "commercial", "unresolved", None),
         ("b", "COMMERCIAL", "HB AMPS", "Commercial", "commercial", "unresolved", None),
@@ -180,9 +187,10 @@ def test_payer_map_keeps_reviewed_rows_and_adds_new_ones(tmp_path):
     assert rows[("COMMERCIAL", "HB AMPS")]["payer_name"] == "AMPS"
     assert rows[("COMMERCIAL", "HB AMPS")]["hospitals"] == "a;b"
     assert rows[("COMMERCIAL", "HB AMPS")]["note"] == "checked"
-    assert rows[("HUMANA", "MA")]["status"] == "ambiguous"
+    assert (rows[("HUMANA", "MA")]["status"], rows[("HUMANA", "MA")]["reviewed"]) == \
+        ("ambiguous", "no")
     assert rows[("AETNNA", "PPO")]["match_score"] == "92"
-    assert counts == {"reviewed": 1, "ambiguous": 1, "auto": 1}
+    assert counts == {"resolved (reviewed)": 1, "ambiguous": 1, "resolved": 1}
     # a second load with fewer hospitals keeps every row
     write_payer_map(_mapping([("a", "AETNNA", "PPO", "Aetna", "commercial", "fuzzy", 91.7)]),
                     path)
@@ -209,7 +217,7 @@ def test_require_payer_map_fails_on_missing_names_and_writes_report(loaded_db, t
     # complete the map and mark one row as checked: now it passes
     write_payer_map(pairs, tmp_path / "payer_map.csv")
     rows = read_payer_map(tmp_path / "payer_map.csv")
-    rows[0]["status"] = "reviewed"
+    rows[0]["reviewed"] = "yes"
     with open(tmp_path / "payer_map.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader()

@@ -5,8 +5,8 @@ Hospitals spell payers their own way ("BLUE CROSS IDAHO [1007]", "Blue Cross ",
 read out of the free text. Resolution runs in this order:
 
 1. hand-checked rows in data/payer_map.csv (exact payer_raw, plan_raw or
-   '*'): status `reviewed` fixes the payer and plan type, status
-   `ambiguous` keeps the plan type `unknown` on purpose
+   '*') marked reviewed=yes: status `resolved` fixes the payer and plan
+   type, status `ambiguous` keeps the plan type `unknown` on purpose
 2. alias rules from config/payers.yaml, longest alias first, on the payer
    name and then on the plan name (some files put "COMMERCIAL" in the payer
    column and the real network in the plan column)
@@ -20,9 +20,9 @@ only runs Medicaid business, it is not guessed: the plan type stays `unknown`
 and the match is marked `ambiguous`.
 
 `write_payer_map` keeps data/payer_map.csv in step with the loaded files:
-every raw payer/plan pair gets a row, new pairs come in as `auto` (or
-`unresolved` / `ambiguous`) for review, and hand-checked rows are never
-overwritten.
+every raw payer/plan pair gets a row with its status (resolved, ambiguous or
+unresolved), new pairs come in with reviewed=no, and rows a person has
+checked (reviewed=yes) are never overwritten.
 """
 from __future__ import annotations
 
@@ -40,14 +40,26 @@ PLAN_TYPES = ("medicare_advantage", "medicare", "medicaid", "exchange",
               "workers_comp", "military", "commercial", "unknown")
 
 # data/payer_map.csv
-MAP_FIELDS = ["payer_raw", "plan_raw", "payer_name", "plan_type", "status",
+MAP_FIELDS = ["payer_raw", "plan_raw", "payer_name", "plan_type", "status", "reviewed",
               "match_method", "match_score", "hospitals", "note"]
-# statuses a person sets after checking a row; the pipeline never changes them
-CHECKED_STATUSES = ("reviewed", "ambiguous")
-MAP_STATUSES = CHECKED_STATUSES + ("auto", "unresolved")
+MAP_STATUSES = ("resolved", "ambiguous", "unresolved")
+
+
+def is_checked(row: dict[str, str]) -> bool:
+    """A row a person has checked. Rows from the older reviewed-only format
+    have no `reviewed` column and count as checked."""
+    return (row.get("reviewed") or "yes").strip().lower() == "yes"
+
+
+def row_status(row: dict[str, str]) -> str:
+    return (row.get("status") or "resolved").strip().lower()
 
 _BRACKETS = re.compile(r"\[[^\]]*\]|\([^)]*\)")
-_HOSPITAL_PREFIX = re.compile(r"^(HB|PB)\s+(NAMPA|BOISE|MERIDIAN|MAGIC VALLEY|MSTI|SLRMC)\s+")
+_HOSPITAL_PREFIX = re.compile(
+    r"^(HB|PB)\s+(NAMPA|BOISE|MERIDIAN|MAGIC VALLEY|MSTI|SLRMC|TV|MV|WR|MCCALL)\s+")
+# Saint Alphonsus lists BlueCard plans by state: "BLUE CROSS - MA" is Blue
+# Cross Blue Shield of Massachusetts, not Medicare Advantage.
+_BLUE_STATE = re.compile(r"^(BLUE CROSS|BLUE SHIELD|BCBS)\s*-\s*[A-Z]{2}\b")
 _NON_WORD = re.compile(r"[^A-Z0-9&+/ -]+")
 
 
@@ -67,7 +79,7 @@ def _has(text: str, phrase: str) -> bool:
 _MA_PATTERNS = ("MEDICARE ADVANTAGE", "MEDICARE ADV", "MCR ADV", "MED ADV", "MEDADV",
                 "MAPD", "MA PPO", "MA HMO", "DSNP", "D-SNP", "SNP", "MEDICARE REPLACEMENT",
                 "SENIOR", "DUAL", "MMP", "MCRHMO", "MCR HMO",
-                "MCRPPO", "MCR PPO", "TRUE BLUE")
+                "MCRPPO", "MCR PPO", "TRUE BLUE", "PFFS")
 _MEDICAID_PATTERNS = ("MEDICAID", "MCD", "MMCP", "MLTSS", "CHIP", "MGMCD", "IDHW",
                       "MEDICAID COUNTY")
 _EXCHANGE_PATTERNS = ("QHP", "HIX", "EXCHANGE", "MARKETPLACE", "ACA", "INDIVIDUAL")
@@ -83,7 +95,8 @@ def classify_plan_type(payer_text: str, plan_text: str, medicaid_mco: bool = Fal
     runs Medicaid business or the text mentions Medicaid; otherwise as
     Medicare Advantage.
     """
-    text = f"{clean(payer_text)} {clean(plan_text)}"
+    payer = _BLUE_STATE.sub(r"\1", clean(payer_text))
+    text = f"{payer} {clean(plan_text)}"
     if any(_has(text, p) for p in _MEDICAID_PATTERNS):
         return "medicaid"
     if any(_has(text, p) for p in _MA_PATTERNS):
@@ -131,10 +144,8 @@ class PayerResolver:
         self.program_aliases.sort(key=lambda a: -len(a[0]))
         self._all = self.aliases + self.program_aliases
         self._alias_choices = [a for a, _ in self._all]
-        # Rows without a status come from the older reviewed-only format.
         self.reviewed = {(r["payer_raw"].strip(), r["plan_raw"].strip()): r
-                         for r in reviewed or []
-                         if (r.get("status") or "reviewed") in CHECKED_STATUSES}
+                         for r in reviewed or [] if is_checked(r)}
 
     @classmethod
     def from_files(cls, payers_yaml: Path, payer_map_csv: Path | None = None) -> "PayerResolver":
@@ -158,10 +169,13 @@ class PayerResolver:
         hit = use_reviewed and (self.reviewed.get((payer_raw, plan_raw))
                                 or self.reviewed.get((payer_raw, "*")))
         if hit:
-            if (hit.get("status") or "reviewed") == "ambiguous":
+            if row_status(hit) in ("ambiguous", "unresolved"):
+                # checked, and deliberately left open
                 auto = self.resolve(payer_raw, plan_raw, use_reviewed=False)
-                return Resolution(hit.get("payer_name") or auto.payer_name, "unknown",
-                                  "ambiguous", None)
+                ambiguous = row_status(hit) == "ambiguous"
+                return Resolution(hit.get("payer_name") or auto.payer_name,
+                                  "unknown" if ambiguous else hit.get("plan_type")
+                                  or auto.plan_type, row_status(hit), None)
             return Resolution(hit["payer_name"], hit["plan_type"], "reviewed", 100.0)
 
         payer_c, plan_c = clean(payer_raw), clean(plan_raw)
@@ -191,8 +205,7 @@ class PayerResolver:
 
 
 def _status(method: str) -> str:
-    return {"reviewed": "reviewed", "ambiguous": "ambiguous",
-            "unresolved": "unresolved"}.get(method, "auto")
+    return method if method in ("ambiguous", "unresolved") else "resolved"
 
 
 def read_payer_map(path: Path) -> list[dict[str, str]]:
@@ -221,14 +234,15 @@ def write_payer_map(mapping, path: Path) -> dict[str, int]:
         old = existing.get(key, {})
         hospitals = {h for h in (old.get("hospitals") or "").split(";") if h}
         hospitals.add(r.hospital_id)
-        if (old.get("status") or "") in CHECKED_STATUSES:
-            row = {**old}
+        if old and is_checked(old):
+            row = {**old, "status": row_status(old), "reviewed": "yes"}
         else:
             score = "" if r.match_score is None or r.match_score != r.match_score \
                 else f"{r.match_score:.0f}"
             row = {"payer_raw": r.payer_raw, "plan_raw": r.plan_raw,
                    "payer_name": r.payer_name, "plan_type": r.plan_type,
-                   "status": _status(r.match_method), "match_method": r.match_method,
+                   "status": _status(r.match_method), "reviewed": "no",
+                   "match_method": r.match_method,
                    "match_score": score, "note": old.get("note", "")}
         row["hospitals"] = hospitals
         seen[key] = row
@@ -246,7 +260,8 @@ def write_payer_map(mapping, path: Path) -> dict[str, int]:
         for row in rows:
             row["hospitals"] = ";".join(sorted(row["hospitals"]))
             w.writerow(row)
-            counts[row.get("status") or "reviewed"] = counts.get(row.get("status") or "reviewed", 0) + 1
+            key = f"{row['status']}{' (reviewed)' if row['reviewed'] == 'yes' else ''}"
+            counts[key] = counts.get(key, 0) + 1
     return counts
 
 
@@ -254,14 +269,14 @@ def score_against_review(resolver: PayerResolver,
                          rows: list[dict[str, str]]) -> tuple[int, int]:
     """How many hand-checked rows the automatic rules get right on their own.
 
-    A `reviewed` row counts when the rules give the same payer and plan type;
-    an `ambiguous` row counts when the rules also leave the plan type
-    unknown. Returns (agreeing, checked).
+    A checked `resolved` row counts when the rules give the same payer and
+    plan type; a checked `ambiguous` row counts when the rules also leave the
+    plan type unknown. Returns (agreeing, checked).
     """
     agree = total = 0
     for row in rows:
-        status = row.get("status") or "reviewed"
-        if status not in CHECKED_STATUSES or row["plan_raw"] == "*":
+        status = row_status(row)
+        if not is_checked(row) or row["plan_raw"] == "*":
             continue
         total += 1
         auto = resolver.resolve(row["payer_raw"], row["plan_raw"], use_reviewed=False)

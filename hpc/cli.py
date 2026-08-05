@@ -12,8 +12,8 @@ from hpc import coverage
 from hpc import discover as disc
 from hpc.config import load_metro
 from hpc.db import connect
-from hpc.resolve import (CHECKED_STATUSES, MAP_STATUSES, PayerResolver, read_payer_map,
-                         score_against_review)
+from hpc.resolve import (MAP_STATUSES, PayerResolver, is_checked, read_payer_map,
+                         row_status, score_against_review)
 
 DEFAULT_METRO = "config/metro.yaml"
 
@@ -155,7 +155,7 @@ def cmd_check(args) -> int:
 def _payer_map_checks(con, map_rows: list[dict], path: Path) -> list[tuple[str, bool, str]]:
     """data/payer_map.csv must cover every loaded payer/plan string, hold
     hand-checked rows, and its ambiguous rows must stay unresolved."""
-    out = [("payer map exists", bool(map_rows), f"{len(map_rows):,} rows in {path}")]
+    out = [("payer map exists", bool(map_rows), f"{len(map_rows):,} rows in {path.name}")]
     keys = {(r["payer_raw"], r["plan_raw"]) for r in map_rows}
     wild = {r["payer_raw"] for r in map_rows if r["plan_raw"] == "*"}
     pairs = con.execute("SELECT DISTINCT payer_raw, plan_raw FROM map_payer_plan").fetchall()
@@ -163,13 +163,14 @@ def _payer_map_checks(con, map_rows: list[dict], path: Path) -> list[tuple[str, 
     out.append(("payer map covers every raw name", not missing,
                 f"{len(pairs) - len(missing):,} of {len(pairs):,} payer/plan strings listed"
                 + (f"; missing e.g. {missing[0]}" if missing else "")))
-    bad = [r for r in map_rows if r.get("status") not in MAP_STATUSES]
-    checked = [r for r in map_rows if r.get("status") in CHECKED_STATUSES]
+    bad = [r for r in map_rows if row_status(r) not in MAP_STATUSES
+           or (r.get("reviewed") or "yes") not in ("yes", "no")]
+    checked = [r for r in map_rows if is_checked(r)]
     out.append(("payer map rows have a status and some are reviewed",
                 not bad and bool(checked),
                 f"{len(checked)} hand-checked, {len(bad)} without a valid status"))
     ambiguous = {(r["payer_raw"], r["plan_raw"]) for r in map_rows
-                 if r.get("status") == "ambiguous"}
+                 if row_status(r) == "ambiguous"}
     guessed = [p for p in con.execute("""
         SELECT DISTINCT m.payer_raw, m.plan_raw FROM map_payer_plan m
         JOIN dim_plan pl USING (plan_id) WHERE pl.plan_type <> 'unknown'
