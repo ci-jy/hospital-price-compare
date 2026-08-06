@@ -13,7 +13,7 @@ payers:
   Blue Cross Federal Employee Program: [BLUE CROSS FEDERAL, FEP]
   Regence BlueShield of Idaho: [REGENCE]
   Cigna: [CIGNA, EVERNORTH]
-  UnitedHealthcare: [UNITED HEALTHCARE, UNITED HEALTH CARE, UNITEDHEALTHCARE, UHC, UNITED, UMR, UNITED MEDICAL RESOURCES, OPTUM]
+  UnitedHealthcare: [SECURE HORIZONS, UNITED HEALTHCARE, UNITED HEALTH CARE, UNITEDHEALTHCARE, UHC, UNITED, UMR, UNITED MEDICAL RESOURCES, OPTUM]
   Humana: [HUMANA]
   Molina Healthcare:
     aliases: [MOLINA]
@@ -36,7 +36,7 @@ payers:
   Moda Health: [MODA]
   First Health / Coventry: [FIRST HEALTH, COVENTRY, CCN]
   MultiPlan: [MULTIPLAN, PHCS]
-  First Choice Health: [FIRST CHOICE HEALTH]
+  First Choice Health: [FIRST CHOICE HEALTH, FIRST CHOICE]
   GEHA: [GEHA]
   Providence Health Plan: [PROVIDENCE]
   TRICARE: [TRICARE, TRIWEST, HUMANA MILITARY]
@@ -53,3 +53,7 @@ payers:
   Centurion of Idaho: [CENTURION]
   Corizon Health: [CORIZON]
   Columbia Health Network: [COLUMBIA HEALTH NETWORK]
+  # Filed under St. Luke's generic COMMERCIAL payer at every campus.
+  Advanced Medical Pricing Solutions: [AMPS]
+  Christian Healthcare Ministries: [CHRISTIAN HEALTH AID]
+  Northern Nevada Laborers Trust: [NORTHERN NEVADA LABORERS TRUST]
