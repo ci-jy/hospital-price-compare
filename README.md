@@ -21,7 +21,7 @@ The first metro is **Boise, Idaho**. The five general hospitals of the Boise Cit
 
 ## Why
 
-Since 2021 hospitals have had to post every negotiated rate in a machine-readable file, but the files don't line up with each other. KFF's [ongoing challenges with hospital price transparency](https://www.healthsystemtracker.org/brief/ongoing-challenges-with-hospital-price-transparency/) brief walks through why, and these five files show all of it:
+Since 2021 hospitals have had to post every negotiated rate in a machine-readable file, but the files don't line up with each other. KFF's [ongoing challenges with hospital price transparency](https://www.healthsystemtracker.org/brief/ongoing-challenges-with-hospital-price-transparency/) brief walks through why, and these files show all of it:
 
 - **Payer names are each hospital's own.** St. Luke's writes `BLUE CROSS IDAHO [1007]` with the plan `HB NAMPA SLHP BLUE CROSS CAREPOINT QHP`; West Valley writes `Blue Cross` / `PPO`; Treasure Valley writes `BCI` / `Commercial`; Saint Alphonsus lists every out-of-state Blue plan separately (`BLUE CROSS - AK (PREMERA)`). Across the twelve files there are 872 distinct payer names.
 - **There is no plan-type field.** Whether a rate is commercial, Medicare Advantage or Medicaid has to be read from free text, and abbreviations like `MA` are ambiguous. In these files `BLUE CROSS - MA` is Blue Cross of *Massachusetts* and `MEDICAID - MA` is MassHealth; a rule that reads `MA` as Medicare Advantage gets both wrong.
@@ -162,35 +162,36 @@ python3 -m hpc payers  [--unresolved] [--out review.csv]
 
 By default `ingest` keeps the 72 codes in `config/shoppable_codes.csv` (the CPT codes from CMS's list of 70 shoppable services). `--all-codes` keeps every row.
 
-Real output, trimmed to four rows per group:
+Real output from the twelve-hospital load, four rows per group, first three groups:
 
 ```
 $ python3 -m hpc compare --code 45378 --setting outpatient --limit 4
 45378  PR Colonoscopy Flexible Diagnostic W Collection Specimen Brushing/Washing
 Rates are only compared within one setting, billing class, modifier set and pricing method.
 
-== outpatient | facility | case rate | 3 hospitals, median $6,199.00
+== outpatient | facility | case rate | 4 hospitals, median $6,199.00
    hospital                                 payer                                plan type                            rate vs median  plans  flag
-   West Valley Medical Center               UnitedHealthcare                     commercial                      $6,199.00       +0%      1  billing_class_assumed
-   Saint Alphonsus Medical Center Nampa     Cigna                                commercial                      $9,000.00      +45%      2  ok
-   Saint Alphonsus Medical Center Nampa     Providence Health Plan               commercial                      $9,000.00      +45%      1  ok
-   Saint Alphonsus Regional Medical Center  Cigna                                commercial                     $12,650.00     +104%      2  ok
-   ... 1 more (use --limit 0)
+   Treasure Valley Hospital                 Aetna                                medicare_advantage                $939.61      -85%      1  billing_class_assumed
+   Treasure Valley Hospital                 Blue Cross of Idaho                  medicare_advantage                $939.61      -85%      1  billing_class_assumed
+   Treasure Valley Hospital                 Medicare                             medicare                          $939.61      -85%      1  billing_class_assumed
+   Treasure Valley Hospital                 Medicare Advantage (unlisted carrier medicare_advantage                $939.61      -85%      1  payer_unresolved
+   ... 13 more (use --limit 0)
 
-== outpatient | facility | flat dollar amount | 5 hospitals, median $1,054.35
+== outpatient | facility | flat dollar amount | 8 hospitals, median $1,117.83
    hospital                                 payer                                plan type                            rate vs median  plans  flag
-   West Valley Medical Center               Blue Cross of Idaho                  medicaid                          $302.60      -71%      2  billing_class_assumed
-   West Valley Medical Center               Magellan Healthcare                  medicaid                          $302.60      -71%      1  billing_class_assumed
-   West Valley Medical Center               Molina Healthcare                    medicaid                          $302.60      -71%      1  billing_class_assumed
-   Saint Alphonsus Medical Center Nampa     Molina Healthcare                    medicaid                          $344.25      -67%      1  ok
-   ... 71 more (use --limit 0)
+   Saint Alphonsus Medical Center Baker Cit Idaho Medicaid                       medicaid                           $54.04      -95%      1  ok
+   West Valley Medical Center               Blue Cross of Idaho                  medicaid                          $302.60      -73%      2  billing_class_assumed
+   West Valley Medical Center               Magellan Healthcare                  medicaid                          $302.60      -73%      1  billing_class_assumed
+   West Valley Medical Center               Molina Healthcare                    medicaid                          $302.60      -73%      1  billing_class_assumed
+   ... 94 more (use --limit 0)
 
-== outpatient | facility | percent of billed charges | 2 hospitals, median 77.5% of charges
+== outpatient | facility | percent of billed charges | 5 hospitals, median 80.0% of charges
    hospital                                 payer                                plan type                            rate vs median  plans  flag
-   St. Luke's Boise Medical Center          PacificSource                        commercial               75.0% of charges       -3%      1  pct_derived
-   St. Luke's Nampa Medical Center          PacificSource                        commercial               75.0% of charges       -3%      1  pct_derived
-   St. Luke's Boise Medical Center          MultiPlan                            commercial               80.0% of charges       +3%      1  pct_derived
-   St. Luke's Nampa Medical Center          MultiPlan                            commercial               80.0% of charges       +3%      1  pct_derived
+   St. Luke's Boise Medical Center          PacificSource                        commercial               75.0% of charges       -6%      1  pct_derived
+   St. Luke's Magic Valley Medical Center   PacificSource                        commercial               75.0% of charges       -6%      1  pct_derived
+   St. Luke's Nampa Medical Center          PacificSource                        commercial               75.0% of charges       -6%      1  pct_derived
+   St. Luke's Boise Medical Center          MultiPlan                            commercial               80.0% of charges       +0%      1  pct_derived
+   ... 6 more (use --limit 0)
 ...
 ```
 
@@ -251,6 +252,7 @@ Flags on the twelve-hospital load: 300,378 `ok`, 24,765 `billing_class_assumed`,
 - Out-of-state Blue Cross plans (BlueCard) are folded into Blue Cross of Idaho, since local claims are priced under the local Blue contract. That is a judgement call, not something the files state.
 - St. Luke's files use the setting `both`, which is kept apart from `inpatient` / `outpatient`, so some St. Luke's rates sit in their own group.
 - The payer alias list is hand-written for Boise. A new metro needs its own aliases and a review pass over the `reviewed=no` rows in `data/payer_map.csv`.
+- The two Oregon hospitals (Ontario, Baker City) list their state Medicaid as plain `MEDICAID`, which resolves to Idaho Medicaid. It should be Oregon Medicaid; the rules have no notion of which state a hospital is in yet.
 - "Metro" is stretched: only six of the twelve hospitals are in the Boise MSA. The other six are useful for payer resolution (same payers, same systems) but a Twin Falls rate is not a Boise alternative for a patient.
 - I reviewed the new St. Luke's, Treasure Valley and Weiser strings, not the roughly 2,700 Saint Alphonsus ones, so the 92.5% agreement figure says nothing yet about Trinity's naming.
 - The rule mistakes the review found (the `CCN` and `BLUE SHIELD` aliases) are fixed only through checked rows, not in `config/payers.yaml`, so they would come back at a new hospital.
@@ -264,3 +266,5 @@ Flags on the twelve-hospital load: 300,378 `ok`, 24,765 `billing_class_assumed`,
 - Loading the CMS shoppable-services list and MS-DRGs directly instead of the hand-copied code list.
 
 Project period: 2026-07-18 to 2026-07-20; payer resolution and pricing-method classification for twelve hospitals added 2026-10-09 (see [CHANGELOG.md](CHANGELOG.md)).
+
+Project period: 2026-07-18 to 2026-08-07.
