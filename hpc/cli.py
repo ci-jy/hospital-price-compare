@@ -1,4 +1,4 @@
-"""Command line: python -m hpc {discover,ingest,check,compare,payers}."""
+"""Command line: python -m hpc {discover,ingest,check,compare,payers,export}."""
 from __future__ import annotations
 
 import argparse
@@ -261,6 +261,20 @@ def cmd_payers(args) -> int:
     return 0
 
 
+def cmd_export(args) -> int:
+    from hpc.export import export
+
+    metro = load_metro(args.metro)
+    db = _db(args)
+    out = Path(args.out)
+    counts = export(db, out, title=f"Negotiated hospital rates, {metro.name}",
+                    memory_limit=metro.memory_limit, threads=metro.threads)
+    for name, n in counts.items():
+        print(f"{name:<18} {n:>9,} rows  {out / 'data' / (name + '.parquet')}")
+    print(f"wrote {out / 'index.html'}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="hpc", description=__doc__)
     p.add_argument("-v", "--verbose", action="store_true")
@@ -308,6 +322,11 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--unresolved", action="store_true", help="only fuzzy/unresolved rows")
     sp.add_argument("--out", help="write CSV here for review")
     sp.set_defaults(func=cmd_payers)
+
+    sp = sub.add_parser("export", help="write Parquet tables for Power BI and docs/index.html")
+    common(sp)
+    sp.add_argument("--out", default="docs", help="output folder (Parquet goes in <out>/data)")
+    sp.set_defaults(func=cmd_export)
     return p
 
 

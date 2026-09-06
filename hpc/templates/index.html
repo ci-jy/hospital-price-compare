@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<style>
+  :root { --ink: #1d2733; --muted: #5d6b7a; --line: #dde3ea; --accent: #1f6f8b;
+          --low: #2e7d4f; --high: #b3412e; --bg: #f6f8fa; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+         color: var(--ink); background: var(--bg); }
+  header { background: #fff; border-bottom: 1px solid var(--line); padding: 18px 28px 0; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 12px; max-width: 900px; }
+  nav { display: flex; gap: 4px; }
+  nav button { border: 0; background: none; padding: 10px 14px; font: inherit; cursor: pointer;
+               color: var(--muted); border-bottom: 3px solid transparent; }
+  nav button.on { color: var(--ink); border-color: var(--accent); font-weight: 600; }
+  main { padding: 20px 28px 40px; }
+  section { display: none; } section.on { display: block; }
+  .cards { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px;
+          min-width: 150px; }
+  .card b { display: block; font-size: 20px; }
+  .card span { color: var(--muted); font-size: 12px; }
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 14px; }
+  label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 3px; }
+  select { font: inherit; padding: 5px 6px; min-width: 160px; max-width: 520px; }
+  .group { background: #fff; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 16px; }
+  .group h3 { margin: 0; padding: 10px 14px; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .group h3 small { color: var(--muted); font-weight: normal; }
+  table { border-collapse: collapse; width: 100%; background: #fff; }
+  th, td { padding: 5px 10px; text-align: left; border-bottom: 1px solid var(--line);
+           white-space: nowrap; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; background: #fafbfc; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { position: relative; width: 160px; height: 10px; background: #eef1f4; border-radius: 2px; }
+  .bar i { position: absolute; top: 0; height: 10px; border-radius: 2px; }
+  .bar .mid { position: absolute; left: 50%; top: -2px; width: 1px; height: 14px; background: #333; }
+  .lo { color: var(--low); } .hi { color: var(--high); }
+  .flag { font-size: 12px; color: var(--muted); }
+  .note { color: var(--muted); max-width: 900px; }
+  .wrap { overflow-x: auto; }
+  .heat td.c { text-align: right; font-variant-numeric: tabular-nums; min-width: 64px; }
+  footer { color: var(--muted); font-size: 12px; padding: 0 28px 24px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>{{title}}</h1>
+  <p class="sub">Negotiated rates from the hospitals' own price-transparency files, made
+  comparable by payer and service. Rates are only compared within one comparison group:
+  one billing code, setting, billing class, modifier set and pricing method.</p>
+  <nav>
+    <button data-tab="lookup" class="on">Service lookup</button>
+    <button data-tab="spread">Payer spread</button>
+    <button data-tab="quality">Data quality</button>
+  </nav>
+</header>
+<main>
+  <section id="lookup" class="on">
+    <div class="cards" id="cards"></div>
+    <div class="controls">
+      <label>Service <select id="code"></select></label>
+      <label>Setting <select id="setting"></select></label>
+      <label>Payer <select id="payer"></select></label>
+    </div>
+    <p class="note">The metro median is taken over every rate in the group. Each hospital row
+    shows the median of its payers' rates, so a hospital with many payers on one contract can
+    sit on either side of it.</p>
+    <div id="groups"></div>
+  </section>
+
+  <section id="spread">
+    <p class="note">How far each payer's rates sit from the metro median of their comparison
+    group, over every dollar-priced group that has at least two hospitals. -20% means the
+    payer's typical rate is a fifth below what the metro as a whole pays for the same code,
+    setting and pricing method. Payers with fewer than 100 such rates are left out, and so are
+    hospital cells with fewer than 20.</p>
+    <div class="wrap"><table id="payers"></table></div>
+    <h3>By payer and hospital</h3>
+    <div class="wrap"><table class="heat" id="heat"></table></div>
+  </section>
+
+  <section id="quality">
+    <div class="cards" id="qcards"></div>
+    <div class="wrap"><table id="qhosp"></table></div>
+    <h3>Pricing methods</h3>
+    <div class="wrap"><table id="qmethod"></table></div>
+    <h3>Quality flags</h3>
+    <p class="note">Every rate carries one flag, the most serious issue found. Flags marked
+    "not compared" keep the rate out of every comparison.</p>
+    <div class="wrap"><table id="qflags"></table></div>
+  </section>
+</main>
+<footer id="foot"></footer>
+<script>
+const D = /*DATA*/null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const int = (n) => n.toLocaleString("en-US");
+const pct = (x, d = 1) => (x * 100).toFixed(d) + "%";
+const amt = (v, unit) => unit === "pct_of_charges" ? v.toFixed(1) + "% of charges"
+  : "$" + v.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const signed = (x) => (x >= 0 ? "+" : "") + (x * 100).toFixed(0) + "%";
+const cls = (x) => x <= -0.05 ? "lo" : x >= 0.05 ? "hi" : "";
+
+document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("nav button, section").forEach((e) => e.classList.remove("on"));
+  b.classList.add("on");
+  $(b.dataset.tab).classList.add("on");
+});
+
+const T = D.totals;
+$("cards").innerHTML = [
+  [T.hospitals, "hospitals"], [int(T.rates), "negotiated rates"],
+  [pct(T.comparable / T.rates), "have a comparable amount"],
+  [pct(T.multi_hospital / T.rates), "sit in a group with 2+ hospitals"],
+  [int(T.groups), "comparison groups"], [T.payers, "resolved payers"],
+].map(([v, l]) => `<div class="card"><b>${v}</b><span>${l}</span></div>`).join("");
+
+// Service lookup ------------------------------------------------------------
+const byGroup = new Map();
+D.cells.forEach((c) => {
+  if (!byGroup.has(c[0])) byGroup.set(c[0], []);
+  byGroup.get(c[0]).push(c);
+});
+$("code").innerHTML = D.services.map(([c, d]) =>
+  `<option value="${esc(c)}">${esc(c)} ${esc((d || "").slice(0, 70))}</option>`).join("");
+$("code").value = D.services.some((s) => s[0] === "45378") ? "45378" : D.services[0][0];
+$("payer").innerHTML = '<option value="">all payers</option>' +
+  D.payers.map((p, i) => `<option value="${i}">${esc(p)}</option>`).join("");
+
+function settings() {
+  const code = $("code").value;
+  const s = [...new Set(D.groups.filter((g) => g[0] === code).map((g) => g[1]))].sort();
+  const keep = $("setting").value;
+  $("setting").innerHTML = '<option value="">all settings</option>' +
+    s.map((x) => `<option>${esc(x)}</option>`).join("");
+  if (s.includes(keep)) $("setting").value = keep;
+}
+
+function lookup() {
+  const code = $("code").value, setting = $("setting").value, payer = $("payer").value;
+  const out = [];
+  D.groups.forEach((g, gi) => {
+    if (g[0] !== code || (setting && g[1] !== setting)) return;
+    let cells = byGroup.get(gi) || [];
+    if (payer !== "") cells = cells.filter((c) => c[2] === +payer);
+    if (!cells.length) return;
+    const [, set, bclass, mods, method, unit, rates, hosp, , med] = g;
+    // One row per hospital: its median across payers, and its payer range.
+    const hosps = new Map();
+    cells.forEach((c) => {
+      if (!hosps.has(c[1])) hosps.set(c[1], []);
+      hosps.get(c[1]).push(c);
+    });
+    const rows = [...hosps.entries()].map(([h, cs]) => {
+      const v = cs.map((c) => c[3]).sort((a, b) => a - b);
+      const m = v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2;
+      return {h, cs, m, lo: v[0], hi: v[v.length - 1]};
+    }).sort((a, b) => a.m - b.m);
+    const scale = Math.max(...rows.map((r) => Math.abs(r.m / med - 1)), 0.01);
+    const body = rows.map((r) => {
+      const rel = med ? r.m / med - 1 : 0;
+      const w = Math.min(50, Math.abs(rel) / scale * 50);
+      const bar = `<div class="bar"><i style="left:${rel < 0 ? 50 - w : 50}%;width:${w}%;` +
+        `background:${rel < 0 ? "var(--low)" : "var(--high)"}"></i><span class="mid"></span></div>`;
+      const payers = r.cs.slice().sort((a, b) => a[3] - b[3]).map((c) =>
+        `${esc(D.payers[c[2]])} ${amt(c[3], unit)}`).join(" · ");
+      return `<tr><td>${esc(D.hospitals[r.h][0])}</td><td class="n">${amt(r.m, unit)}</td>` +
+        `<td class="n ${cls(rel)}">${signed(rel)}</td><td>${bar}</td>` +
+        `<td class="n">${amt(r.lo, unit)} – ${amt(r.hi, unit)}</td>` +
+        `<td class="n">${r.cs.length}</td>` +
+        `<td class="flag" title="${esc(payers)}">${esc(D.flags[mode(r.cs.map((c) => c[5]))])}</td></tr>`;
+    }).join("");
+    out.push(`<div class="group"><h3>${esc(set)} | ${esc(bclass)}${mods ? " | modifier " + esc(mods) : ""}` +
+      ` | ${esc(method)} <small>· ${hosp} hospital${hosp === 1 ? "" : "s"}, ${int(rates)} rate${rates === 1 ? "" : "s"}, metro median ${amt(med, unit)}</small></h3>` +
+      `<div class="wrap"><table><tr><th>hospital</th><th class="n">median across payers</th>` +
+      `<th class="n">vs metro</th><th></th><th class="n">payer range</th><th class="n">payers</th>` +
+      `<th>most common flag</th></tr>${body}</table></div></div>`);
+  });
+  $("groups").innerHTML = out.join("") || '<p class="note">No comparable rates for this selection.</p>';
+}
+
+function mode(xs) {
+  const n = new Map();
+  xs.forEach((x) => n.set(x, (n.get(x) || 0) + 1));
+  return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
+}
+
+$("code").onchange = () => { settings(); lookup(); };
+$("setting").onchange = lookup;
+$("payer").onchange = lookup;
+settings(); lookup();
+
+// Payer spread ---------------------------------------------------------------
+$("payers").innerHTML = "<tr><th>payer</th><th class='n'>typical spread vs metro median</th>" +
+  "<th></th><th class='n'>rates</th><th class='n'>hospitals</th></tr>" +
+  D.payer_totals.map(([p, s, n, h]) => {
+    const w = Math.min(50, Math.abs(s) * 100);
+    return `<tr><td>${esc(D.payers[p])}</td><td class="n ${cls(s)}">${signed(s)}</td>` +
+      `<td><div class="bar"><i style="left:${s < 0 ? 50 - w : 50}%;width:${w}%;` +
+      `background:${s < 0 ? "var(--low)" : "var(--high)"}"></i><span class="mid"></span></div></td>` +
+      `<td class="n">${int(n)}</td><td class="n">${h}</td></tr>`;
+  }).join("");
+const heatPayers = D.payer_totals.map((t) => t[0]);
+const heatHosp = [...new Set(D.payer_spread.map((s) => s[1]))].sort(
+  (a, b) => D.hospitals[a][0].localeCompare(D.hospitals[b][0]));
+const cell = new Map(D.payer_spread.map(([p, h, s, n]) => [p + ":" + h, [s, n]]));
+const shade = (s) => {
+  const a = Math.min(0.85, Math.abs(s) * 1.5);
+  return s < 0 ? `rgba(46,125,79,${a})` : `rgba(179,65,46,${a})`;
+};
+$("heat").innerHTML = "<tr><th>payer</th>" + heatHosp.map((h) =>
+  `<th class="n" title="${esc(D.hospitals[h][0])}">${esc(D.hospitals[h][0].replace(/Medical Center|Regional|Hospital/g, "").trim())}</th>`).join("") + "</tr>" +
+  heatPayers.map((p) => `<tr><td>${esc(D.payers[p])}</td>` + heatHosp.map((h) => {
+    const v = cell.get(p + ":" + h);
+    return v ? `<td class="c" style="background:${shade(v[0])};color:${Math.abs(v[0]) > 0.4 ? "#fff" : "inherit"}"` +
+      ` title="${int(v[1])} rates">${signed(v[0])}</td>` : "<td class='c'></td>";
+  }).join("") + "</tr>").join("");
+
+// Data quality ---------------------------------------------------------------
+$("qcards").innerHTML = [
+  [pct(T.comparable / T.rates), "rates with a comparable amount"],
+  [pct(T.resolved_share), "payer/plan strings resolved"],
+  [int(T.rates - T.comparable), "rates kept out of comparisons"],
+].map(([v, l]) => `<div class="card"><b>${v}</b><span>${l}</span></div>`).join("");
+$("qhosp").innerHTML = "<tr><th>hospital</th><th>city</th><th>file encoding</th><th class='n'>rates</th>" +
+  "<th class='n'>comparable</th><th class='n'>flag ok</th><th class='n'>payer/plan strings</th>" +
+  "<th class='n'>resolved</th></tr>" +
+  D.quality.map(([h, r, c, ok, s, res]) => `<tr><td>${esc(D.hospitals[h][0])}</td>` +
+    `<td>${esc(D.hospitals[h][1])}</td><td>${esc(D.hospitals[h][2])}</td><td class="n">${int(r)}</td>` +
+    `<td class="n">${r ? pct(c / r) : "-"}</td><td class="n">${r ? pct(ok / r) : "-"}</td>` +
+    `<td class="n">${int(s)}</td><td class="n">${s ? pct(res / s) : "-"}</td></tr>`).join("");
+$("qmethod").innerHTML = "<tr><th>pricing method</th><th class='n'>rates</th><th class='n'>comparable</th></tr>" +
+  D.methods.map(([m, n, c]) => `<tr><td>${esc(m)}</td><td class="n">${int(n)}</td>` +
+    `<td class="n">${int(c)}</td></tr>`).join("");
+$("qflags").innerHTML = "<tr><th>flag</th><th>meaning</th><th></th><th class='n'>rates</th><th class='n'>share</th></tr>" +
+  D.flag_counts.map(([f, m, c, n]) => `<tr><td>${esc(f)}</td><td>${esc(m)}</td>` +
+    `<td class="flag">${c ? "" : "not compared"}</td><td class="n">${int(n)}</td>` +
+    `<td class="n">${pct(n / T.rates)}</td></tr>`).join("");
+
+$("foot").textContent = `Generated ${D.generated} by hpc export from the same Parquet files ` +
+  `the Power BI report reads (docs/data/). Source: each hospital's CMS machine-readable file.`;
+</script>
+</body>
+</html>

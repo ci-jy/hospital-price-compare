@@ -26,5 +26,8 @@ hpc = "hpc.cli:main"
 [tool.setuptools]
 packages = ["hpc", "hpc.ingest"]
 
+[tool.setuptools.package-data]
+hpc = ["templates/*.html"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
