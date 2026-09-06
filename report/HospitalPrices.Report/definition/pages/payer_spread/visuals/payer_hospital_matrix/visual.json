@@ -1,0 +1,96 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.4.0/schema.json",
+  "name": "payer_hospital_matrix",
+  "position": {
+    "x": 332,
+    "y": 332,
+    "z": 3,
+    "height": 372,
+    "width": 932,
+    "tabOrder": 3
+  },
+  "visual": {
+    "visualType": "pivotTable",
+    "query": {
+      "queryState": {
+        "Rows": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "plan"
+                    }
+                  },
+                  "Property": "payer_name"
+                }
+              },
+              "queryRef": "plan.payer_name",
+              "nativeQueryRef": "payer_name"
+            }
+          ]
+        },
+        "Columns": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "hospital"
+                    }
+                  },
+                  "Property": "hospital_name"
+                }
+              },
+              "queryRef": "hospital.hospital_name",
+              "nativeQueryRef": "hospital_name"
+            }
+          ]
+        },
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "rate"
+                    }
+                  },
+                  "Property": "Typical Spread vs Metro Median"
+                }
+              },
+              "queryRef": "rate.Typical Spread vs Metro Median",
+              "nativeQueryRef": "Typical Spread vs Metro Median"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Payer x hospital'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

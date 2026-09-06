@@ -1,0 +1,88 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.4.0/schema.json",
+  "name": "method_table",
+  "position": {
+    "x": 792,
+    "y": 142,
+    "z": 5,
+    "height": 300,
+    "width": 472,
+    "tabOrder": 5
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "comparison_group"
+                    }
+                  },
+                  "Property": "method_label"
+                }
+              },
+              "queryRef": "comparison_group.method_label",
+              "nativeQueryRef": "method_label"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "rate"
+                    }
+                  },
+                  "Property": "Rates"
+                }
+              },
+              "queryRef": "rate.Rates",
+              "nativeQueryRef": "Rates"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "rate"
+                    }
+                  },
+                  "Property": "Comparable Rates"
+                }
+              },
+              "queryRef": "rate.Comparable Rates",
+              "nativeQueryRef": "Comparable Rates"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'By pricing method'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

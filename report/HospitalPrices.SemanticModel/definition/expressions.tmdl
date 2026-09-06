@@ -1,0 +1,6 @@
+/// Folder holding the Parquet files written by `hpc export --out docs`. Point it at your
+/// checkout's docs\data\ folder (with the trailing backslash) after opening the report.
+expression ParquetFolder = "C:\\hospital-price-compare\\docs\\data\\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 87d3ab7c-39fa-5178-948a-2168abd09284
+
+	annotation PBI_ResultType = Text

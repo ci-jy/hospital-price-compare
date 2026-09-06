@@ -1,0 +1,80 @@
+/// Each hospital's raw payer/plan strings and how they were resolved.
+table payer_string
+	lineageTag: 18a953dd-2bf9-50b9-b620-bba26e2a3771
+
+	/// Raw payer/plan strings.
+	measure 'Payer Strings' = COUNTROWS ( payer_string )
+		formatString: #,0
+		lineageTag: 6e9f8977-afd0-5f28-8cac-f36bb51a5d1d
+
+	/// Raw payer/plan strings matched to a known payer.
+	measure 'Share of Payer Strings Resolved' = DIVIDE ( CALCULATE ( COUNTROWS ( payer_string ), payer_string[is_resolved] = TRUE () ), [Payer Strings] )
+		formatString: 0.0%
+		lineageTag: 9b009a64-dc25-5bf8-b82e-85c3d59b2b11
+
+	column hospital_id
+		dataType: string
+		isHidden
+		lineageTag: 9691863f-ed96-5ec9-a25f-d80bbb97abd5
+		summarizeBy: none
+		sourceColumn: hospital_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column payer_raw
+		dataType: string
+		lineageTag: 59c9f2d2-bec4-5d83-b681-35c0a9fce77b
+		summarizeBy: none
+		sourceColumn: payer_raw
+
+		annotation SummarizationSetBy = Automatic
+
+	column plan_raw
+		dataType: string
+		lineageTag: c231170f-4e3e-5d77-9f51-877c373c5be1
+		summarizeBy: none
+		sourceColumn: plan_raw
+
+		annotation SummarizationSetBy = Automatic
+
+	column plan_id
+		dataType: int64
+		isHidden
+		lineageTag: 8415cfba-1001-5e6c-abfc-7b48a802bbb5
+		summarizeBy: none
+		sourceColumn: plan_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column match_method
+		dataType: string
+		lineageTag: 78030c85-ffc5-5e29-9c49-e5e2a2c41bba
+		summarizeBy: none
+		sourceColumn: match_method
+
+		annotation SummarizationSetBy = Automatic
+
+	column match_score
+		dataType: double
+		formatString: 0.0
+		lineageTag: 327d8c26-cafe-56b9-a0eb-0c93391e5e1e
+		summarizeBy: none
+		sourceColumn: match_score
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_resolved
+		dataType: boolean
+		lineageTag: 68aa48a9-77a2-5e1f-a813-58324d4223a8
+		summarizeBy: none
+		sourceColumn: is_resolved
+
+		annotation SummarizationSetBy = Automatic
+
+	partition payer_string = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(ParquetFolder & "payer_string.parquet"))
+				in
+				    Source

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.4.0/schema.json",
+  "name": "flag_bar",
+  "position": {
+    "x": 16,
+    "y": 458,
+    "z": 6,
+    "height": 246,
+    "width": 1248,
+    "tabOrder": 6
+  },
+  "visual": {
+    "visualType": "clusteredBarChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "quality_flag"
+                    }
+                  },
+                  "Property": "quality_flag"
+                }
+              },
+              "queryRef": "quality_flag.quality_flag",
+              "nativeQueryRef": "quality_flag"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "rate"
+                    }
+                  },
+                  "Property": "Rates"
+                }
+              },
+              "queryRef": "rate.Rates",
+              "nativeQueryRef": "Rates"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Rates by quality flag'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

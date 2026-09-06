@@ -7,3 +7,6 @@ data/raw/
 data/*.duckdb
 data/*.duckdb.wal
 data/.duckdb_tmp/
+# Power BI Desktop's per-user files inside the PBIP folders
+report/**/.pbi/localSettings.json
+report/**/.pbi/cache.abf

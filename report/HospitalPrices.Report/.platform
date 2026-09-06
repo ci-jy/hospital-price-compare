@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "HospitalPrices"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "8fb38618-f65e-5302-adac-38229617fa78"
+  }
+}

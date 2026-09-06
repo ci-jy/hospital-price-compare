@@ -1,0 +1,60 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.4.0/schema.json",
+  "name": "rates_card",
+  "position": {
+    "x": 964,
+    "y": 16,
+    "z": 3,
+    "height": 110,
+    "width": 300,
+    "tabOrder": 3
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "rate"
+                    }
+                  },
+                  "Property": "Rates"
+                }
+              },
+              "queryRef": "rate.Rates",
+              "nativeQueryRef": "Rates"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Rates'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

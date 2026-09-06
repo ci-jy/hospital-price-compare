@@ -1,0 +1,59 @@
+/// One row per hospital file loaded.
+table hospital
+	lineageTag: e8bfeb33-0334-5714-965f-05c9a252bd01
+
+	column hospital_id
+		dataType: string
+		lineageTag: 79936f6f-b154-5f7d-b23e-90992c6ba584
+		summarizeBy: none
+		sourceColumn: hospital_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column hospital_name
+		dataType: string
+		lineageTag: e63ff645-6a74-5040-9306-7efb34599211
+		summarizeBy: none
+		sourceColumn: hospital_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column city
+		dataType: string
+		lineageTag: ab8ca172-9600-5b0b-824d-ec967122c95a
+		summarizeBy: none
+		sourceColumn: city
+
+		annotation SummarizationSetBy = Automatic
+
+	column encoding
+		dataType: string
+		lineageTag: 0e590d9d-4bbc-5089-871f-a2884c9e0390
+		summarizeBy: none
+		sourceColumn: encoding
+
+		annotation SummarizationSetBy = Automatic
+
+	column file_last_updated
+		dataType: string
+		lineageTag: 0de83cb2-3e9c-5797-bbd2-8eb592b9ba2f
+		summarizeBy: none
+		sourceColumn: file_last_updated
+
+		annotation SummarizationSetBy = Automatic
+
+	column staged_rows
+		dataType: int64
+		lineageTag: ede97f8c-e44a-5d8a-99bd-4c456f2b4d8f
+		summarizeBy: none
+		sourceColumn: staged_rows
+
+		annotation SummarizationSetBy = Automatic
+
+	partition hospital = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(ParquetFolder & "hospital.parquet"))
+				in
+				    Source

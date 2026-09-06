@@ -1,0 +1,17 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation PBI_QueryOrder = ["ParquetFolder","hospital","service","plan","comparison_group","rate","payer_string","quality_flag"]
+
+ref table hospital
+ref table service
+ref table plan
+ref table comparison_group
+ref table rate
+ref table payer_string
+ref table quality_flag

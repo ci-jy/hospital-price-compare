@@ -1,0 +1,60 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.4.0/schema.json",
+  "name": "flagged_card",
+  "position": {
+    "x": 648,
+    "y": 16,
+    "z": 2,
+    "height": 110,
+    "width": 300,
+    "tabOrder": 2
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "rate"
+                    }
+                  },
+                  "Property": "Share of Flagged Rates"
+                }
+              },
+              "queryRef": "rate.Share of Flagged Rates",
+              "nativeQueryRef": "Share of Flagged Rates"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Share of flagged rates'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

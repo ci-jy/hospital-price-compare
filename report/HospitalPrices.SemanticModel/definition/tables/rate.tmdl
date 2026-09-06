@@ -1,0 +1,236 @@
+/// One negotiated rate. compare_amount is dollars, or percent of charges when compare_unit = pct_of_charges.
+table rate
+	lineageTag: 57424504-28d9-548e-8833-66f95807b026
+
+	/// Negotiated rates in the current filter.
+	measure 'Rates' = COUNTROWS ( rate )
+		formatString: #,0
+		lineageTag: 63eb657b-e02d-594e-9fef-398c6b35aefb
+
+	/// Rates with an amount that can be compared within their group.
+	measure 'Comparable Rates' = CALCULATE ( COUNTROWS ( rate ), rate[is_comparable] = TRUE () )
+		formatString: #,0
+		lineageTag: 41323d34-57ba-51df-813a-33bce50b0847
+
+	/// Comparable rates as a share of all rates.
+	measure 'Share of Comparable Rates' = DIVIDE ( [Comparable Rates], [Rates] )
+		formatString: 0.0%
+		lineageTag: 7a80e14a-d59a-572e-ab1b-bf5331ac54f6
+
+	/// Hospitals with at least one comparable rate.
+	measure 'Hospitals' = CALCULATE ( DISTINCTCOUNT ( rate[hospital_id] ), rate[is_comparable] = TRUE () )
+		formatString: 0
+		lineageTag: 659c49b7-3615-5843-827f-cb1fd8221ed2
+
+	/// Median compare amount; blank unless exactly one comparison group is in the filter.
+	measure 'Median Negotiated Rate' =
+			VAR groups =
+			    CALCULATE ( DISTINCTCOUNT ( rate[comparison_group] ), rate[is_comparable] = TRUE () )
+			RETURN
+			    -- Only defined inside one comparison group: a median over a case rate
+			    -- and a percent of charges would mean nothing.
+			    IF (
+			        groups = 1,
+			        CALCULATE ( MEDIAN ( rate[compare_amount] ), rate[is_comparable] = TRUE () )
+			    )
+		formatString: #,0.00
+		lineageTag: b92dd099-9759-50e4-a0ec-201796422612
+
+	/// Median of the comparison group over every hospital and payer in the metro.
+	measure 'Metro Median Rate' = CALCULATE ( [Median Negotiated Rate], REMOVEFILTERS ( hospital ), REMOVEFILTERS ( plan ) )
+		formatString: #,0.00
+		lineageTag: c8190ff7-bb13-540c-ab24-2797b631b3d3
+
+	/// How far the selection's median sits from the metro median of the same group.
+	measure 'Spread vs Metro Median' =
+			VAR selected = [Median Negotiated Rate]
+			VAR metro = [Metro Median Rate]
+			RETURN
+			    IF ( NOT ISBLANK ( selected ) && metro > 0, selected / metro - 1 )
+		formatString: +0%;-0%;0%
+		lineageTag: cd7803f7-7d86-5c78-8447-f06e36be5e43
+
+	/// Median of rate / group metro median - 1 over dollar-priced rates; works across codes.
+	measure 'Typical Spread vs Metro Median' =
+			-- Across groups: the median of each dollar rate's own distance from its
+			-- group's metro median (groups with two or more hospitals only).
+			CALCULATE ( MEDIAN ( rate[vs_metro_median] ), rate[compare_unit] = "usd" )
+		formatString: +0%;-0%;0%
+		lineageTag: 37f89c22-4a68-5826-b407-88d50acb0a5a
+
+	/// Rates with any quality flag other than ok.
+	measure 'Flagged Rates' = CALCULATE ( [Rates], rate[quality_flag] <> "ok" )
+		formatString: #,0
+		lineageTag: 9bd0c0ac-6584-58ce-80a9-917bf3bec116
+
+	/// Flagged rates as a share of all rates.
+	measure 'Share of Flagged Rates' = DIVIDE ( [Flagged Rates], [Rates] )
+		formatString: 0.0%
+		lineageTag: 40921d11-4f00-55ae-b74f-7849565b5eab
+
+	column hospital_id
+		dataType: string
+		isHidden
+		lineageTag: 617e6625-0dc6-5933-ada2-51b2d95c791b
+		summarizeBy: none
+		sourceColumn: hospital_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column service_id
+		dataType: int64
+		isHidden
+		lineageTag: fa1c9301-f117-53d2-ab90-a658c449e78d
+		summarizeBy: none
+		sourceColumn: service_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column plan_id
+		dataType: int64
+		isHidden
+		lineageTag: 9f4b913d-4e9a-5b2a-8088-85c77bab7cd0
+		summarizeBy: none
+		sourceColumn: plan_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column comparison_group
+		dataType: string
+		isHidden
+		lineageTag: ed06d2dd-584b-5ab9-9048-d55b0bfed06f
+		summarizeBy: none
+		sourceColumn: comparison_group
+
+		annotation SummarizationSetBy = Automatic
+
+	column setting
+		dataType: string
+		lineageTag: 13555ef3-ad53-5d7b-a92e-cf55f9fcd1b2
+		summarizeBy: none
+		sourceColumn: setting
+
+		annotation SummarizationSetBy = Automatic
+
+	column billing_class
+		dataType: string
+		lineageTag: caa22ed5-24f3-50af-8f4d-1f9ab1784cde
+		summarizeBy: none
+		sourceColumn: billing_class
+
+		annotation SummarizationSetBy = Automatic
+
+	column modifiers
+		dataType: string
+		lineageTag: 3ea6ae4e-a320-56fd-a92c-3e290bbf397a
+		summarizeBy: none
+		sourceColumn: modifiers
+
+		annotation SummarizationSetBy = Automatic
+
+	column pricing_method
+		dataType: string
+		lineageTag: 1a05276b-66e3-5801-9bdd-16a838c0e6af
+		summarizeBy: none
+		sourceColumn: pricing_method
+
+		annotation SummarizationSetBy = Automatic
+
+	column compare_unit
+		dataType: string
+		lineageTag: 37b18a8e-def8-5da5-ad9d-5886f67e811d
+		summarizeBy: none
+		sourceColumn: compare_unit
+
+		annotation SummarizationSetBy = Automatic
+
+	column gross_charge
+		dataType: double
+		formatString: \$#,0.00
+		lineageTag: 3e6244ae-ce37-5a78-855a-a8dc39730cab
+		summarizeBy: none
+		sourceColumn: gross_charge
+
+		annotation SummarizationSetBy = Automatic
+
+	column negotiated_dollar
+		dataType: double
+		formatString: \$#,0.00
+		lineageTag: b736070e-b821-5800-aca0-b0fa4b0b5553
+		summarizeBy: none
+		sourceColumn: negotiated_dollar
+
+		annotation SummarizationSetBy = Automatic
+
+	column negotiated_percentage
+		dataType: double
+		formatString: 0.0
+		lineageTag: 781f23e7-cfe0-5396-be94-b9f261cb1de4
+		summarizeBy: none
+		sourceColumn: negotiated_percentage
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Dollars, or percent of charges for percent_of_charges rates. Never mix units.
+	column compare_amount
+		dataType: double
+		formatString: #,0.00
+		lineageTag: 9849bc4b-354c-53f3-bc64-299c8dc33c18
+		summarizeBy: none
+		sourceColumn: compare_amount
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Median compare_amount of the rate's comparison group across the whole metro.
+	column group_median
+		dataType: double
+		formatString: #,0.00
+		lineageTag: c168e063-c4ec-5acd-a837-0dd33d28ac19
+		summarizeBy: none
+		sourceColumn: group_median
+
+		annotation SummarizationSetBy = Automatic
+
+	column group_hospitals
+		dataType: int64
+		lineageTag: bd7ac7f8-8357-5608-a64d-dbd1f37944a4
+		summarizeBy: none
+		sourceColumn: group_hospitals
+
+		annotation SummarizationSetBy = Automatic
+
+	/// compare_amount / group_median - 1, only for groups with at least two hospitals.
+	column vs_metro_median
+		dataType: double
+		formatString: 0.0%;-0.0%;0.0%
+		lineageTag: 7f6705d9-0a10-5594-a31d-119f8f2f932e
+		summarizeBy: none
+		sourceColumn: vs_metro_median
+
+		annotation SummarizationSetBy = Automatic
+
+	/// The rate has an amount that can be compared within its group.
+	column is_comparable
+		dataType: boolean
+		lineageTag: 8c769134-3d9d-595b-bd94-f390903cc074
+		summarizeBy: none
+		sourceColumn: is_comparable
+
+		annotation SummarizationSetBy = Automatic
+
+	column quality_flag
+		dataType: string
+		isHidden
+		lineageTag: 63c6c5e6-ac7e-5282-b762-7be33382d1bb
+		summarizeBy: none
+		sourceColumn: quality_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	partition rate = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(ParquetFolder & "rate.parquet"))
+				in
+				    Source

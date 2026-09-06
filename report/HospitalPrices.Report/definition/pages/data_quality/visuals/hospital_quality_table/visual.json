@@ -1,0 +1,144 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.4.0/schema.json",
+  "name": "hospital_quality_table",
+  "position": {
+    "x": 16,
+    "y": 142,
+    "z": 4,
+    "height": 300,
+    "width": 760,
+    "tabOrder": 4
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "hospital"
+                    }
+                  },
+                  "Property": "hospital_name"
+                }
+              },
+              "queryRef": "hospital.hospital_name",
+              "nativeQueryRef": "hospital_name"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "hospital"
+                    }
+                  },
+                  "Property": "encoding"
+                }
+              },
+              "queryRef": "hospital.encoding",
+              "nativeQueryRef": "encoding"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "rate"
+                    }
+                  },
+                  "Property": "Rates"
+                }
+              },
+              "queryRef": "rate.Rates",
+              "nativeQueryRef": "Rates"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "rate"
+                    }
+                  },
+                  "Property": "Share of Comparable Rates"
+                }
+              },
+              "queryRef": "rate.Share of Comparable Rates",
+              "nativeQueryRef": "Share of Comparable Rates"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "rate"
+                    }
+                  },
+                  "Property": "Share of Flagged Rates"
+                }
+              },
+              "queryRef": "rate.Share of Flagged Rates",
+              "nativeQueryRef": "Share of Flagged Rates"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "payer_string"
+                    }
+                  },
+                  "Property": "Payer Strings"
+                }
+              },
+              "queryRef": "payer_string.Payer Strings",
+              "nativeQueryRef": "Payer Strings"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "payer_string"
+                    }
+                  },
+                  "Property": "Share of Payer Strings Resolved"
+                }
+              },
+              "queryRef": "payer_string.Share of Payer Strings Resolved",
+              "nativeQueryRef": "Share of Payer Strings Resolved"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'By hospital'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

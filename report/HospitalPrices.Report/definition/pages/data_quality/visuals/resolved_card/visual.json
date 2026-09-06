@@ -1,0 +1,60 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.4.0/schema.json",
+  "name": "resolved_card",
+  "position": {
+    "x": 332,
+    "y": 16,
+    "z": 1,
+    "height": 110,
+    "width": 300,
+    "tabOrder": 1
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "payer_string"
+                    }
+                  },
+                  "Property": "Share of Payer Strings Resolved"
+                }
+              },
+              "queryRef": "payer_string.Share of Payer Strings Resolved",
+              "nativeQueryRef": "Share of Payer Strings Resolved"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Payer strings resolved'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

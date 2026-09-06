@@ -1,0 +1,27 @@
+relationship ffa5cd60-de07-5a3c-b1c6-447e0652d5d5
+	fromColumn: rate.hospital_id
+	toColumn: hospital.hospital_id
+
+relationship 0f37335d-7bfc-510a-a766-6fc363dfe6e4
+	fromColumn: rate.service_id
+	toColumn: service.service_id
+
+relationship dc1efae1-15da-571f-8723-4b8b3c3923c2
+	fromColumn: rate.plan_id
+	toColumn: plan.plan_id
+
+relationship 7be5e4ff-ace5-50e8-8c67-73ac764d10f4
+	fromColumn: rate.comparison_group
+	toColumn: comparison_group.comparison_group
+
+relationship 2b011aec-f876-5bf9-9938-e5ea740d7b71
+	fromColumn: rate.quality_flag
+	toColumn: quality_flag.quality_flag
+
+relationship 2c0700c6-aa48-5fc8-99c7-26fe76b1e51c
+	fromColumn: payer_string.hospital_id
+	toColumn: hospital.hospital_id
+
+relationship 1a817acc-13b6-52a9-86b5-48b7d97774be
+	fromColumn: payer_string.plan_id
+	toColumn: plan.plan_id

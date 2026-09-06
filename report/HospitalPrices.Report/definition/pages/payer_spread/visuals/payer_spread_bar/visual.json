@@ -1,0 +1,78 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.4.0/schema.json",
+  "name": "payer_spread_bar",
+  "position": {
+    "x": 332,
+    "y": 16,
+    "z": 2,
+    "height": 300,
+    "width": 932,
+    "tabOrder": 2
+  },
+  "visual": {
+    "visualType": "clusteredBarChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "plan"
+                    }
+                  },
+                  "Property": "payer_name"
+                }
+              },
+              "queryRef": "plan.payer_name",
+              "nativeQueryRef": "payer_name"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "rate"
+                    }
+                  },
+                  "Property": "Typical Spread vs Metro Median"
+                }
+              },
+              "queryRef": "rate.Typical Spread vs Metro Median",
+              "nativeQueryRef": "Typical Spread vs Metro Median"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Typical spread vs metro median by payer (dollar rates)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

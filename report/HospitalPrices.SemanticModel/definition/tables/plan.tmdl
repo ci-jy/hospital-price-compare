@@ -1,0 +1,43 @@
+/// Resolved payer x plan type.
+table plan
+	lineageTag: 86e96494-4955-5b3f-8f3c-e8a3f626bf77
+
+	column plan_id
+		dataType: int64
+		lineageTag: f695fc01-0481-59b6-94e1-4fc85e94da9b
+		summarizeBy: none
+		sourceColumn: plan_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column payer_id
+		dataType: int64
+		lineageTag: 03c85d5a-a2e7-57b9-8981-5be6100f5c20
+		summarizeBy: none
+		sourceColumn: payer_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column payer_name
+		dataType: string
+		lineageTag: 20b5c2cf-0e0a-5c6a-8326-a23ed93ec23b
+		summarizeBy: none
+		sourceColumn: payer_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column plan_type
+		dataType: string
+		lineageTag: e9990a36-bd15-5189-a4bb-39fb3181fe2b
+		summarizeBy: none
+		sourceColumn: plan_type
+
+		annotation SummarizationSetBy = Automatic
+
+	partition plan = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(ParquetFolder & "plan.parquet"))
+				in
+				    Source

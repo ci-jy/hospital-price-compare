@@ -1,0 +1,35 @@
+/// Quality flags and whether a rate with the flag is compared.
+table quality_flag
+	lineageTag: b0cba026-4536-5872-8799-9fe4be3c51d5
+
+	column quality_flag
+		dataType: string
+		lineageTag: 383c86b5-c087-55d5-a2ca-34c4b21ca068
+		summarizeBy: none
+		sourceColumn: quality_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column meaning
+		dataType: string
+		lineageTag: c7d60469-8a11-5612-be48-eea0bd8c87ad
+		summarizeBy: none
+		sourceColumn: meaning
+
+		annotation SummarizationSetBy = Automatic
+
+	column compared
+		dataType: boolean
+		lineageTag: aea228d4-9e37-5253-aa6c-f6af524b8013
+		summarizeBy: none
+		sourceColumn: compared
+
+		annotation SummarizationSetBy = Automatic
+
+	partition quality_flag = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(ParquetFolder & "quality_flag.parquet"))
+				in
+				    Source

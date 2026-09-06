@@ -1,0 +1,78 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.4.0/schema.json",
+  "name": "hospital_spread_bar",
+  "position": {
+    "x": 832,
+    "y": 152,
+    "z": 6,
+    "height": 552,
+    "width": 432,
+    "tabOrder": 6
+  },
+  "visual": {
+    "visualType": "clusteredBarChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "hospital"
+                    }
+                  },
+                  "Property": "hospital_name"
+                }
+              },
+              "queryRef": "hospital.hospital_name",
+              "nativeQueryRef": "hospital_name"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "rate"
+                    }
+                  },
+                  "Property": "Spread vs Metro Median"
+                }
+              },
+              "queryRef": "rate.Spread vs Metro Median",
+              "nativeQueryRef": "Spread vs Metro Median"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Hospital vs metro median (pick one group)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,126 @@
+/// Code x setting x billing class x modifiers x pricing method. Rates are only compared inside one group.
+table comparison_group
+	lineageTag: eda24d07-ab0d-571b-867d-2d9b54d4dd59
+
+	column comparison_group
+		dataType: string
+		lineageTag: 3e8b7a8d-67e6-5edd-8aa5-d0723e72e568
+		summarizeBy: none
+		sourceColumn: comparison_group
+
+		annotation SummarizationSetBy = Automatic
+
+	column code
+		dataType: string
+		lineageTag: fcfd2a25-a0bf-5c3f-bec0-d8be7b193260
+		summarizeBy: none
+		sourceColumn: code
+
+		annotation SummarizationSetBy = Automatic
+
+	column setting
+		dataType: string
+		lineageTag: 5a4a935f-992c-5ab9-891c-c1e2c9a5bfc3
+		summarizeBy: none
+		sourceColumn: setting
+
+		annotation SummarizationSetBy = Automatic
+
+	column billing_class
+		dataType: string
+		lineageTag: 14069f18-9334-5e68-aeb3-5b9860562412
+		summarizeBy: none
+		sourceColumn: billing_class
+
+		annotation SummarizationSetBy = Automatic
+
+	column modifiers
+		dataType: string
+		lineageTag: fd60ec54-974a-51cb-8c64-67b5d791970e
+		summarizeBy: none
+		sourceColumn: modifiers
+
+		annotation SummarizationSetBy = Automatic
+
+	column pricing_method
+		dataType: string
+		lineageTag: bb1901b4-74f4-5d55-88f2-1f7cc12292c1
+		summarizeBy: none
+		sourceColumn: pricing_method
+
+		annotation SummarizationSetBy = Automatic
+
+	column method_label
+		dataType: string
+		lineageTag: 70a5e4c4-b477-5eb4-9573-d14cd44c6244
+		summarizeBy: none
+		sourceColumn: method_label
+
+		annotation SummarizationSetBy = Automatic
+
+	column compare_unit
+		dataType: string
+		lineageTag: a20fb83d-e28d-5666-812d-29d7432a22f6
+		summarizeBy: none
+		sourceColumn: compare_unit
+
+		annotation SummarizationSetBy = Automatic
+
+	column rates
+		dataType: int64
+		lineageTag: f10d45c8-57cf-58be-a0fc-f8a6f4f68d32
+		summarizeBy: none
+		sourceColumn: rates
+
+		annotation SummarizationSetBy = Automatic
+
+	column hospitals
+		dataType: int64
+		lineageTag: 6e8bef8a-b257-5431-9cc9-9785b421ae91
+		summarizeBy: none
+		sourceColumn: hospitals
+
+		annotation SummarizationSetBy = Automatic
+
+	column payers
+		dataType: int64
+		lineageTag: 6e9adad9-4cde-5016-8a84-0d64331780ef
+		summarizeBy: none
+		sourceColumn: payers
+
+		annotation SummarizationSetBy = Automatic
+
+	column min_amount
+		dataType: double
+		formatString: #,0.00
+		lineageTag: f5f4171a-990e-5344-8943-d13d419431ea
+		summarizeBy: none
+		sourceColumn: min_amount
+
+		annotation SummarizationSetBy = Automatic
+
+	column median_amount
+		dataType: double
+		formatString: #,0.00
+		lineageTag: e7681a77-37bc-5673-8d02-3b7e3cd8b278
+		summarizeBy: none
+		sourceColumn: median_amount
+
+		annotation SummarizationSetBy = Automatic
+
+	column max_amount
+		dataType: double
+		formatString: #,0.00
+		lineageTag: d8a86c88-0c1f-5870-8bd6-67d5d954b752
+		summarizeBy: none
+		sourceColumn: max_amount
+
+		annotation SummarizationSetBy = Automatic
+
+	partition comparison_group = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(ParquetFolder & "comparison_group.parquet"))
+				in
+				    Source

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.4.0/schema.json",
+  "name": "plan_type_slicer",
+  "position": {
+    "x": 16,
+    "y": 232,
+    "z": 1,
+    "height": 200,
+    "width": 300,
+    "tabOrder": 1
+  },
+  "visual": {
+    "visualType": "slicer",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "plan"
+                    }
+                  },
+                  "Property": "plan_type"
+                }
+              },
+              "queryRef": "plan.plan_type",
+              "nativeQueryRef": "plan_type"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Plan type'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,59 @@
+/// One row per billing code (CPT / HCPCS / DRG).
+table service
+	lineageTag: db2ce5b3-99f5-53e6-b675-1ba61883941a
+
+	column service_id
+		dataType: int64
+		lineageTag: 7e680feb-d0be-56fe-9e79-ddaf8547ff5d
+		summarizeBy: none
+		sourceColumn: service_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column code
+		dataType: string
+		lineageTag: 21c3ab77-fa62-5805-a226-c2fac880ba0e
+		summarizeBy: none
+		sourceColumn: code
+
+		annotation SummarizationSetBy = Automatic
+
+	column code_type
+		dataType: string
+		lineageTag: d40890c1-a7ec-53d2-941a-215a0e0d8c57
+		summarizeBy: none
+		sourceColumn: code_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column description
+		dataType: string
+		lineageTag: 1968a9d0-48b1-5925-be46-a682d5a84ade
+		summarizeBy: none
+		sourceColumn: description
+
+		annotation SummarizationSetBy = Automatic
+
+	column service_label
+		dataType: string
+		lineageTag: 6324d52b-b17e-5cd2-b9b2-e5bf4366a87c
+		summarizeBy: none
+		sourceColumn: service_label
+
+		annotation SummarizationSetBy = Automatic
+
+	column raw_descriptions
+		dataType: int64
+		lineageTag: 565eb2ca-5779-53c2-a990-28616a3862b6
+		summarizeBy: none
+		sourceColumn: raw_descriptions
+
+		annotation SummarizationSetBy = Automatic
+
+	partition service = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(ParquetFolder & "service.parquet"))
+				in
+				    Source
