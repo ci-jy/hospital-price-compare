@@ -2,6 +2,8 @@
 
 A small data pipeline that takes the negotiated-rate files US hospitals are required to publish and makes them comparable: for one billing code, which hospital charges which payer what, and how that rate is calculated. It is aimed at the people who currently do this by hand: employer benefits teams, health-plan and healthcare analysts, patient advocates and local journalists.
 
+The results come out three ways: the `hpc compare` command, a Power BI project (`report/HospitalPrices.pbip`) with a TMDL semantic model and DAX measures, and a static page at `docs/index.html` built from the same Parquet tables for anyone without Power BI.
+
 The first metro is **Boise, Idaho**. The five general hospitals of the Boise City MSA come first, published in all three CMS encodings. To get to twelve I added the rest of what I could find around them: Treasure Valley Hospital (the only other Boise MSA hospital whose `cms-hpt.txt` points at a downloadable file), Ontario and Weiser from the wider Boise–Mountain Home–Ontario area, and the two Boise systems' other hospitals in southern Idaho and eastern Oregon, which contract with the same payers. St. Luke's Meridian and Elmore share the St. Luke's Boise file, so they are not separate rows.
 
 | Hospital | City | System | File encoding |
@@ -53,6 +55,11 @@ flowchart LR
     X --> CHK[hpc check]
     PM --> CHK
     CHK --> COV[reports/coverage.md]
+    X --> EXP[hpc export]
+    V --> EXP
+    EXP --> PQ[(docs/data/*.parquet)]
+    PQ --> PBI[report/HospitalPrices.pbip<br/>TMDL model + DAX]
+    PQ --> WEB[docs/index.html]
 ```
 
 1. **Discover** (`hpc/discover.py`) – every hospital must publish `https://<domain>/cms-hpt.txt` listing its file URL. The configured `location-name` is looked up there and the URL and fetch time are written to `data/sources.csv`.
@@ -60,6 +67,7 @@ flowchart LR
 3. **Resolve payers** (`hpc/resolve.py`) – rows in `data/payer_map.csv` that a person has checked (`reviewed=yes`) win; otherwise alias rules from `config/payers.yaml` (longest alias first, carrier names before program words like `MEDICARE`, then the plan column when the payer column just says `COMMERCIAL`), then RapidFuzz `token_sort_ratio ≥ 88` for typos. Anything left keeps its cleaned name and is marked `unresolved`. Plan type comes from the text. A bare `MA` is read as Medicaid for Medicaid-only payers (Molina, Magellan) and otherwise left as plan type `unknown` with status `ambiguous` instead of being guessed; `BLUE CROSS - XX` state codes are removed before plan type is read. Every ingest merges each raw payer/plan pair into `data/payer_map.csv` (status `resolved`, `ambiguous` or `unresolved`, `reviewed=no` for new rows) without touching checked rows, so the file is the review queue.
 4. **Classify pricing method** (`hpc/method.py`) – the CMS `methodology` field when it holds one of the four template values, otherwise the algorithm text (`per diem`, `per day`, `case rate`, `per admission`, `% of billed charges`), otherwise which number is filled in. Then value checks: a percentage sitting in the dollar column, a fraction written for a percentage, a missing percentage recovered from the notes or dollar ÷ gross, a percentage of *Medicare or another fee schedule* (`120% of current Medicare`, `APC rate x 135%`), and a dollar methodology with only a percentage filled in. The last two become `other` and are never compared.
 5. **Normalise** (`sql/normalize.sql`) – each rate gets its method (`flat_dollar`, `percent_of_charges`, `per_diem`, `case_rate`, or `other`) and a compare amount. Percent-of-charges rates are compared as a percentage, never as dollars. Every rate also gets a `quality_flag`.
+6. **Export** (`hpc/export.py`) – the star schema is flattened into seven Parquet tables in `docs/data/` (one fact table `rate`, plus `hospital`, `service`, `plan`, `comparison_group`, `quality_flag`, and `payer_string` for the payer review). Each rate carries its comparison group, the group's metro median from `v_rate_compare` and its distance from that median. `docs/index.html` is then built by reading those Parquet files back, so the page and the Power BI model can't drift apart.
 
 ### Schema
 
@@ -150,6 +158,39 @@ erDiagram
 
 The `$0.76` case is a real one. Saint Alphonsus Nampa lists clobazam 10 mg at a $2.85 gross charge, 26.78% of billed charges, with `.76` in the dollar column. A naive rule would call that 76% or 76 cents, but the pipeline compares it as 26.78% of charges. The test fixtures keep that row.
 
+### Power BI report and docs page
+
+`report/` is a Power BI project in the PBIP format, so the model and pages are plain text files that diff in git:
+
+```
+report/
+├── HospitalPrices.pbip
+├── HospitalPrices.SemanticModel/definition/
+│   ├── model.tmdl, relationships.tmdl, expressions.tmdl
+│   └── tables/  rate, hospital, service, plan, comparison_group, quality_flag, payer_string
+└── HospitalPrices.Report/definition/pages/
+    ├── service_lookup/   service, setting and method slicers; rates by group, hospital and payer
+    ├── payer_spread/     each payer's typical distance from the metro median, and payer x hospital
+    └── data_quality/     comparable share, payer strings resolved, flags and methods by hospital
+```
+
+Each table is imported with `Parquet.Document(File.Contents(ParquetFolder & "<table>.parquet"))`. `ParquetFolder` is a text parameter; after opening the `.pbip`, set it to your checkout's `docs\data\` folder (Transform data → Edit parameters) and refresh.
+
+The DAX measures live on the `rate` and `payer_string` tables:
+
+| measure | what it is |
+|---|---|
+| `Median Negotiated Rate` | median `compare_amount`, but blank unless the filter holds exactly one comparison group, so a visual can't take a median over case rates and percentages at once |
+| `Metro Median Rate` | the same median with the hospital and payer filters removed |
+| `Spread vs Metro Median` | `Median Negotiated Rate / Metro Median Rate - 1` |
+| `Typical Spread vs Metro Median` | median of each dollar rate's own distance from its group's metro median; this one works across codes, so the payer page can rank payers |
+| `Share of Comparable Rates` | rates with a comparable amount ÷ all rates |
+| `Share of Flagged Rates`, `Share of Payer Strings Resolved` | for the data-quality page |
+
+`docs/index.html` shows the same three views without Power BI. It is one self-contained file (no CDN, about 0.8 MB with the data inlined), so it works from disk or GitHub Pages:
+
+![docs page, service lookup for 45378](docs/screenshot.png)
+
 ## Interface
 
 ```
@@ -158,6 +199,7 @@ python3 -m hpc ingest  --metro config/metro.yaml [--hospitals N] [--all-codes]
 python3 -m hpc check   [--min-hospitals N] [--min-encodings N] [--require-payer-map] [--report reports/coverage.md]
 python3 -m hpc compare --code 45378 [--setting outpatient] [--limit 25|0] [--format table|csv]
 python3 -m hpc payers  [--unresolved] [--out review.csv]
+python3 -m hpc export  [--out docs]                # Parquet in docs/data/ + docs/index.html
 ```
 
 By default `ingest` keeps the 72 codes in `config/shoppable_codes.csv` (the CPT codes from CMS's list of 70 shoppable services). `--all-codes` keeps every row.
@@ -211,9 +253,11 @@ python3 -m hpc check --min-hospitals 5
 python3 -m hpc compare --code 45378
 python3 -m hpc ingest --metro config/metro.yaml --hospitals 12
 python3 -m hpc check --min-hospitals 12 --require-payer-map
+python3 -m hpc export --out docs
+scripts/screenshot_docs.sh        # optional: docs/screenshot.png via headless Chromium or Chrome
 ```
 
-The first five-hospital `ingest` downloads about 1.6 GB into `data/raw/` (gitignored), and unzipping the two Saint Alphonsus files takes about 10 GB of disk; the other seven add roughly another 1 GB of downloads and two more large unzipped Saint Alphonsus files. Later runs reuse the cached files unless the URL in `cms-hpt.txt` changes. With files cached, the twelve-hospital run (72 shoppable codes) takes about 55 seconds, stores 356,935 rates and peaks at about 500–580 MB of memory (the command prints this). Each run also refreshes `data/payer_map.csv`; commit it after a review.
+The first five-hospital `ingest` downloads about 1.6 GB into `data/raw/` (gitignored), and unzipping the two Saint Alphonsus files takes about 10 GB of disk; the other seven add roughly another 1 GB of downloads and two more large unzipped Saint Alphonsus files. Later runs reuse the cached files unless the URL in `cms-hpt.txt` changes. With files cached, the twelve-hospital run (72 shoppable codes) takes about 55 seconds, stores 356,935 rates and peaks at about 500–580 MB of memory (the command prints this). Each run also refreshes `data/payer_map.csv`; commit it after a review. `export` takes under a second and writes about 0.7 MB of Parquet (the 356,935-row `rate` table is 650 KB); those files and `docs/index.html` are committed so the report and the page open without running the pipeline. Open `docs/index.html` in a browser, or `report/HospitalPrices.pbip` in Power BI Desktop and point `ParquetFolder` at `docs\data\`.
 
 ## Testing
 
@@ -221,7 +265,9 @@ The first five-hospital `ingest` downloads about 1.6 GB into `data/raw/` (gitign
 python3 -m pytest -q
 ```
 
-72 tests run in about two seconds against `tests/fixtures/`: trimmed excerpts of the real St. Luke's Nampa wide CSV, Saint Alphonsus Nampa tall CSV, West Valley JSON and the Saint Alphonsus `cms-hpt.txt` (cut by `scripts/trim_fixtures.py`). They cover format detection including zips, the wide-file unpivot (row counts and values checked against an independent `csv` parse), streaming JSON, payer resolution including the `MA` ambiguity, every pricing-method rule, the `$0.76` case and its variants, and ingest → check → compare end to end. `tests/test_edge_cases.py` has one test per hard case: a bare `MA` plan flagged `plan_type_ambiguous` and kept out of known plan types, `BLUE CROSS - MA` read as Massachusetts, a percentage stored as dollars (with and without a gross charge, next to a real 69-cent fee), a percent of Medicare kept away from percent-of-charges rates, per-diem rows found from the field or the algorithm text and never ranked with case rates, and four descriptions of one colonoscopy code becoming one service in one comparison group. It also checks that rewriting `payer_map.csv` keeps checked rows and that `check --require-payer-map` fails on a map with a missing string. Two other tests corrupt a copy of the database (a percent rate relabelled as dollars, and a ranking view that ignores the pricing method) and confirm `hpc check` fails. The fixtures' attester names and contact details are replaced with placeholders.
+85 tests run in about two seconds against `tests/fixtures/`: trimmed excerpts of the real St. Luke's Nampa wide CSV, Saint Alphonsus Nampa tall CSV, West Valley JSON and the Saint Alphonsus `cms-hpt.txt` (cut by `scripts/trim_fixtures.py`). They cover format detection including zips, the wide-file unpivot (row counts and values checked against an independent `csv` parse), streaming JSON, payer resolution including the `MA` ambiguity, every pricing-method rule, the `$0.76` case and its variants, and ingest → check → compare end to end. `tests/test_edge_cases.py` has one test per hard case: a bare `MA` plan flagged `plan_type_ambiguous` and kept out of known plan types, `BLUE CROSS - MA` read as Massachusetts, a percentage stored as dollars (with and without a gross charge, next to a real 69-cent fee), a percent of Medicare kept away from percent-of-charges rates, per-diem rows found from the field or the algorithm text and never ranked with case rates, and four descriptions of one colonoscopy code becoming one service in one comparison group. It also checks that rewriting `payer_map.csv` keeps checked rows and that `check --require-payer-map` fails on a map with a missing string. Two other tests corrupt a copy of the database (a percent rate relabelled as dollars, and a ranking view that ignores the pricing method) and confirm `hpc check` fails. The fixtures' attester names and contact details are replaced with placeholders.
+
+`tests/test_export.py` runs `hpc export` on the fixture database and checks that the `rate` table keeps every rate, that its group medians equal the ones in `v_rate_compare`, that no comparison group mixes units, and that the numbers inlined into `index.html` match the Parquet files. `tests/test_pbip.py` reads the TMDL files and checks them against a fresh fixture export and against the committed `docs/data/`: every column's `sourceColumn` exists in its Parquet file with a matching data type (and no exported column is missing from the model), every `table[column]` and `[Measure]` in the DAX resolves, every relationship joins a unique key with no orphan rows, and every field a visual uses on the three pages exists in the model.
 
 `hpc check` is the data-level test for a real load. It asserts that every staged row became a rate, that enough hospitals and encodings are covered, that each ranked group holds one pricing method and one unit and that its median is computed over exactly that group's rates, that every rate has a quality flag, and that every fact joins to its dimensions. With `--require-payer-map` it also checks the payer map as described above.
 
@@ -246,6 +292,19 @@ The only real `MA` ambiguity left is `MEDICAID MA QMB` at the four Saint Alphons
 
 Flags on the twelve-hospital load: 300,378 `ok`, 24,765 `billing_class_assumed`, 21,922 `payer_unresolved`, 3,552 `above_gross`, 2,734 `method_inferred`, 2,705 `pct_derived`, 472 `plan_type_ambiguous`, 268 `no_amount` and 139 `method_unknown`. The new percent-of-fee-schedule and method/value mismatch checks found nothing in these files; they are there for the next metro.
 
+Payer spread, from the export (dollar-priced rates in comparison groups with at least two hospitals; the median of each rate's distance from its group's metro median, payers with 100+ such rates):
+
+| payer | typical spread vs metro median | rates |
+|---|---:|---:|
+| Medicare | -10% | 27,600 |
+| Idaho Medicaid | -8% | 67,386 |
+| Blue Cross of Idaho | +5% | 55,724 |
+| Regence BlueShield of Idaho | +39% | 3,857 |
+| Idaho Workers' Compensation | +126% | 37,926 |
+| MultiPlan | +146% | 4,414 |
+
+Most large commercial carriers (Aetna, Cigna, UnitedHealthcare, SelectHealth, PacificSource) land at 0%, which mostly says that many hospitals pay one fee schedule to several payers. Workers' comp and the rental networks (MultiPlan, First Choice Health) are where the big gaps are. These numbers are weighted by rate count, and the four Saint Alphonsus files hold about 95% of the dollar rates in those groups, so they mostly describe Trinity's contracts.
+
 ## Known issues
 
 - `--all-codes` over all five files (about 22 million rates) gets killed for memory on my 6 GB machine, even with DuckDB capped at 768 MB and one thread. I haven't yet found which step goes past the cap. The default shoppable-code load is the one that is tested and checked.
@@ -257,14 +316,16 @@ Flags on the twelve-hospital load: 300,378 `ok`, 24,765 `billing_class_assumed`,
 - I reviewed the new St. Luke's, Treasure Valley and Weiser strings, not the roughly 2,700 Saint Alphonsus ones, so the 92.5% agreement figure says nothing yet about Trinity's naming.
 - The rule mistakes the review found (the `CCN` and `BLUE SHIELD` aliases) are fixed only through checked rows, not in `config/payers.yaml`, so they would come back at a new hospital.
 - The St. Luke's percent-of-charges rates carry `pct_derived` because the percentage column is filled only for some payers. The derived values match the posted ones wherever both exist, but they are still estimates.
+- I haven't opened `report/HospitalPrices.pbip` in Power BI Desktop, which doesn't run on my Linux machine. The report JSON files validate against Microsoft's published PBIR schemas (checked once by hand, with network access, not in the test suite), and `tests/test_pbip.py` checks the model against the data, but nothing here parses the TMDL or evaluates the DAX the way Power BI does. There is no base theme, so Desktop will use its default.
+- `ParquetFolder` holds a placeholder Windows path; Power Query can't take a path relative to the `.pbip`, so it has to be set by hand once.
+- `Median Negotiated Rate` is blank on purpose unless one comparison group is selected, which makes the service-lookup bar chart empty until you pick a code, setting and method narrow enough.
 - Downloading depends on the hospitals' URLs. West Valley's is a signed Azure blob URL that changes, so `ingest` re-reads `cms-hpt.txt` on every run.
 
 ## Roadmap
 
 - Review a sample of the Saint Alphonsus payer strings and fix the alias-order problems the review found, then re-measure.
-- A Power BI report (PBIP with a TMDL semantic model over the DuckDB star schema) and a static demo page.
+- Open the report in Power BI Desktop on Windows, fix whatever it complains about, and add screenshots of the three pages.
+- Weight the payer-spread measure by hospital so one system's many rows don't dominate it.
 - Loading the CMS shoppable-services list and MS-DRGs directly instead of the hand-copied code list.
 
-Project period: 2026-07-18 to 2026-07-20; payer resolution and pricing-method classification for twelve hospitals added 2026-10-09 (see [CHANGELOG.md](CHANGELOG.md)).
-
-Project period: 2026-07-18 to 2026-08-07.
+Project period: 2026-07-18 to 2026-08-07; payer resolution and pricing-method classification for twelve hospitals, then the Power BI report and docs page, added 2026-10-09 (see [CHANGELOG.md](CHANGELOG.md)).

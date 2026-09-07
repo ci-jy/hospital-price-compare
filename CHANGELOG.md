@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-09 – Power BI report and static demo page
+
+- `hpc export --out docs` writes seven Parquet tables to `docs/data/` (a `rate` fact table with each rate's comparison group, metro median and distance from it, plus hospital, service, plan, comparison-group, quality-flag and payer-string tables) and builds `docs/index.html` from them.
+- `report/HospitalPrices.pbip`: a TMDL semantic model over those Parquet files with DAX measures for the median negotiated rate (only inside one comparison group), spread versus the metro median and the share of comparable rates, and three pages: service lookup, payer spread and data quality.
+- `docs/index.html` shows the same three views as a single static file; `scripts/screenshot_docs.sh` renders it with headless Chromium to `docs/screenshot.png`.
+- `tests/test_pbip.py` checks every TMDL column and data type against the exported Parquet, every DAX and visual field reference against the model, and that each relationship joins a unique key with no orphans. `tests/test_export.py` checks the export against the database.
+
 ## 2026-10-09 – payer resolution and pricing-method classification at metro scale
 
 - Twelve hospitals instead of five: Treasure Valley, Saint Alphonsus Ontario and Baker City, Weiser Memorial, and St. Luke's Magic Valley, Wood River and McCall. The five Boise MSA hospitals stay first, so `--hospitals 5` loads the same set as before.
