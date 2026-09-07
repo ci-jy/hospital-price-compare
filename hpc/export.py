@@ -262,7 +262,9 @@ def page_data(data_dir: Path, title: str) -> dict:
         SELECT count(*), count(*) FILTER (WHERE is_comparable),
                count(*) FILTER (WHERE group_hospitals >= 2),
                (SELECT count(*) FROM comparison_group WHERE median_amount IS NOT NULL),
-               (SELECT count(*) FILTER (WHERE is_resolved) / count(*) FROM payer_string)
+               (SELECT count(*) FILTER (WHERE is_resolved) / count(*) FROM payer_string),
+               (SELECT count(DISTINCT payer_id) FROM payer_string s JOIN plan USING (plan_id)
+                WHERE s.is_resolved)
         FROM rate
     """).fetchone()
     con.close()
@@ -273,7 +275,7 @@ def page_data(data_dir: Path, title: str) -> dict:
         "generated": f"{datetime.now(timezone.utc):%Y-%m-%d}",
         "totals": {"rates": totals[0], "comparable": totals[1], "multi_hospital": totals[2],
                    "groups": totals[3], "resolved_share": r4(totals[4] or 0),
-                   "hospitals": len(hospitals), "payers": len(payers)},
+                   "hospitals": len(hospitals), "payers": totals[5]},
         "hospitals": [[h[1], h[2], h[3]] for h in hospitals],
         "payers": payers,
         "flags": flags,
