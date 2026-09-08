@@ -1,6 +1,6 @@
 # Coverage
 
-Written by `hpc check` on 2026-10-09 23:32 UTC.
+Written by `hpc check` on 2026-10-09 23:37 UTC.
 
 - Hospitals loaded: 12
 - Rates: 356,935

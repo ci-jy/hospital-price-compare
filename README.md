@@ -303,7 +303,7 @@ Payer spread, from the export (dollar-priced rates in comparison groups with at 
 | Idaho Workers' Compensation | +126% | 37,926 |
 | MultiPlan | +146% | 4,414 |
 
-Most large commercial carriers (Aetna, Cigna, UnitedHealthcare, SelectHealth, PacificSource) land at 0%, which mostly says that many hospitals pay one fee schedule to several payers. Workers' comp and the rental networks (MultiPlan, First Choice Health) are where the big gaps are. These numbers are weighted by rate count, and the four Saint Alphonsus files hold about 95% of the dollar rates in those groups, so they mostly describe Trinity's contracts.
+Most large commercial carriers (Aetna, Cigna, UnitedHealthcare, SelectHealth, PacificSource) land at 0%, which mostly says that many hospitals use one fee schedule for several payers. Workers' comp and the rental networks (MultiPlan, First Choice Health) are where the big gaps are. These numbers are weighted by rate count, and the four Saint Alphonsus files hold about 95% of the dollar rates in those groups, so they mostly describe Trinity's contracts.
 
 ## Known issues
 
@@ -329,3 +329,5 @@ Most large commercial carriers (Aetna, Cigna, UnitedHealthcare, SelectHealth, Pa
 - Loading the CMS shoppable-services list and MS-DRGs directly instead of the hand-copied code list.
 
 Project period: 2026-07-18 to 2026-08-07; payer resolution and pricing-method classification for twelve hospitals, then the Power BI report and docs page, added 2026-10-09 (see [CHANGELOG.md](CHANGELOG.md)).
+
+Project period: 2026-07-18 to 2026-09-08.
