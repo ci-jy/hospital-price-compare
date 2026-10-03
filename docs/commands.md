@@ -46,6 +46,22 @@ Rates for one CPT/HCPCS/DRG code, grouped by setting, billing class, modifiers a
 
 The `plans` column is how many raw payer/plan strings collapsed into that row.
 
+Part of the output for a diagnostic colonoscopy:
+
+```
+$ python3 -m hpc compare --code 45378 --setting outpatient --limit 4
+45378  PR Colonoscopy Flexible Diagnostic W Collection Specimen Brushing/Washing
+Rates are only compared within one setting, billing class, modifier set and pricing method.
+
+== outpatient | facility | percent of billed charges | 5 hospitals, median 80.0% of charges
+   hospital                                 payer                                plan type                            rate vs median  plans  flag
+   St. Luke's Boise Medical Center          PacificSource                        commercial               75.0% of charges       -6%      1  pct_derived
+   St. Luke's Magic Valley Medical Center   PacificSource                        commercial               75.0% of charges       -6%      1  pct_derived
+   St. Luke's Nampa Medical Center          PacificSource                        commercial               75.0% of charges       -6%      1  pct_derived
+   St. Luke's Boise Medical Center          MultiPlan                            commercial               80.0% of charges       +0%      1  pct_derived
+   ... 6 more (use --limit 0)
+```
+
 ## payers
 
 Lists how each raw payer/plan string was resolved (hospital, raw payer, raw plan, resolved payer, plan type, match method and score). `--unresolved` shows only fuzzy and unresolved rows; `--out` writes a CSV for review.

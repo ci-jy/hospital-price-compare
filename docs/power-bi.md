@@ -16,7 +16,7 @@ report/
 │   └── tables/  rate, hospital, service, plan, comparison_group, quality_flag, payer_string
 └── HospitalPrices.Report/definition/pages/
     ├── service_lookup/   service, setting and method slicers; rates by group, hospital and payer
-    ├── payer_spread/     each payer's typical distance from the metro median, and payer x hospital
+    ├── payer_spread/     each payer's typical distance from the metro median, and payer by hospital
     └── data_quality/     comparable share, payer strings resolved, flags and methods by hospital
 ```
 

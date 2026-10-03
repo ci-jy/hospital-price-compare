@@ -39,10 +39,10 @@ The `$0.76` case is a real one. Saint Alphonsus Nampa lists clobazam 10 mg at a 
 - `dim_hospital`: one row per loaded file, with its encoding, source URL and file date.
 - `dim_service`: one row per CPT / HCPCS / DRG code, plus how many different descriptions the files use for it.
 - `dim_payer`: resolved payer.
-- `dim_plan`: payer x plan type.
+- `dim_plan`: one row per payer and plan type.
 - `map_payer_plan`: each hospital's raw payer/plan strings mapped to `dim_plan`, with match method and score.
 - `fact_rate`: one negotiated rate: setting, billing class, modifiers, gross charge, dollar, percentage, `pricing_method`, `compare_amount`, `compare_unit`, `quality_flag`.
-- `v_rate_compare`: rates with the median of their comparison group. A group is code x setting x billing class x modifiers x pricing method, so a professional fee, a discontinued-procedure (`-74`) rate and a percent-of-charges rate never sit in the same ranking.
+- `v_rate_compare`: rates with the median of their comparison group. A group is one code, setting, billing class, modifier set and pricing method, so a professional fee, a discontinued-procedure (`-74`) rate and a percent-of-charges rate never sit in the same ranking.
 - `v_compare_summary`: one row per comparison group with its rate count and min / median / max.
 
 ## Quality flags
